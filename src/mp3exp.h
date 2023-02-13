@@ -13,7 +13,7 @@
 #define PCM8_MODE_PCM8  (1)
 #define PCM8_MODE_PCM8A (2)
 
-#define NUM_CHAINS (4)
+#define NUM_CHAINS (3)
 
 typedef struct {
     void* buffer;

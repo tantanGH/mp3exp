@@ -21,6 +21,8 @@ static void show_help_message() {
   printf("  usage: mp3exp [options] <input-file[.pcm|.s32|.s44|.s48|.m32|.m44|.m48|.mp3]>\n");
   printf("options:\n");
   printf("     -a ... use PCM8A.X for ADPCM encoding\n");
+  printf("     -u ... use 060turbo high memory for buffering\n");
+  printf("     -h ... show help message\n");
 }
 
 int32_t main(int32_t argc, uint8_t* argv[]) {
@@ -37,20 +39,34 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
     goto exit;
   }
 
-  // use PCM8A.X for encoding?
+  // parse command line
+  uint8_t* pcm_file_name = NULL;
   int16_t encode_with_pcm8a = 0;
-  int16_t aofs = 1;
-  if (strcmp(argv[aofs],"-a") == 0) {
-    encode_with_pcm8a = 1;
-    if (argc < 3) {
-      show_help_message();
-      goto exit;
+  int16_t use_high_memory = 0; 
+  for (int16_t i = 1; i < argc; i++) {
+    if (argv[i][0] == '-' && strlen(argv[i]) >= 2) {
+      if (argv[i][1] == 'a') {
+        encode_with_pcm8a = 1;
+      } else if (argv[i][1] == 'u') {
+        use_high_memory = 1;
+      } else if (argv[i][1] == 'h') {
+        show_help_message();
+        goto exit;
+      } else {
+        printf("error: unknown option (%s).\n",argv[i]);
+        goto exit;
+      }
+    } else {
+      pcm_file_name = argv[i];
     }
-    aofs++;
+  }
+
+  if (pcm_file_name == NULL) {
+    printf("error: no pcm file.\n");
+    goto exit;
   }
 
   // input pcm file name and extension
-  uint8_t* pcm_file_name = argv[aofs];
   uint8_t* pcm_file_exp = pcm_file_name + strlen(pcm_file_name) - 4;
 
   // input format check
@@ -155,7 +171,7 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
   // init file read buffer
   size_t fread_buffer_len = pcm_freq * pcm_channels * 2;      // max 2 sec to read
   if (encode_mode != ENCODE_MODE_NONE) {
-    fread_buffer = malloc_himem(fread_buffer_len * sizeof(int16_t), 0);
+    fread_buffer = malloc_himem(fread_buffer_len * sizeof(int16_t), use_high_memory);
     if (fread_buffer == NULL) {
       printf("error: file read buffer memory allocation error.\n");
       goto catch;
@@ -165,7 +181,7 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
   // resampling buffer
   size_t resample_buffer_len = 15625 * 1 * 2;
   if (encode_mode != ENCODE_MODE_NONE) {
-    resample_buffer = malloc_himem(resample_buffer_len * sizeof(int16_t), 0);
+    resample_buffer = malloc_himem(resample_buffer_len * sizeof(int16_t), use_high_memory);
     if (resample_buffer == NULL) {
       printf("error: resampling buffer memory allocation error.\n");
       goto catch;
@@ -212,7 +228,7 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
   }
 
   // preplay buffering
-  printf("\nbuffering...\n");
+  printf("\nbuffering...");
   int16_t end_flag = 0;
   for (int16_t i = 0; i < NUM_CHAINS; i++) {
 
@@ -288,7 +304,7 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
 
   }
 
-  printf("\npush ESC key to stop.\n");
+  printf("\rpush ESC key to stop.\n");
 
   int16_t current_chain = 0;
 
@@ -415,11 +431,11 @@ catch:
 
   // reclaim memory buffers
   if (resample_buffer != NULL) {
-    free_himem(resample_buffer, 0);
+    free_himem(resample_buffer, use_high_memory);
     resample_buffer = NULL;
   }
   if (fread_buffer != NULL) {
-    free_himem(fread_buffer, 0);
+    free_himem(fread_buffer, use_high_memory);
     fread_buffer = NULL;
   }
 
