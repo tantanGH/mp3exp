@@ -38,7 +38,7 @@ COMMON_FLAGS = -m68000 -Os $(INCLUDE_FLAGS)
 CFLAGS = $(COMMON_FLAGS) -fno-conserve-stack -Wno-builtin-declaration-mismatch -fcall-used-d2 -finput-charset=cp932 -fexec-charset=cp932 -fcall-used-a2 -fverbose-asm
 
 # *.c ソースファイル
-C_SRCS = pcm8.c pcm8a.c memory.c adpcm.c pcmexp.c
+C_SRCS = pcm8.c pcm8a.c memory.c adpcm.c main.c
 
 # *.s ソースファイル
 ASM_SRCS = 

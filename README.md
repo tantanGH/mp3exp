@@ -1,2 +1,2 @@
-# pcmexp
-ADPCM/PCM player for X680x0/Human68k
+# MP3EXP.X
+ADPCM/PCM/MP3 player for X680x0/Human68k

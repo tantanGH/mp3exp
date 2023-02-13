@@ -208,7 +208,7 @@ exit:
 //
 //  resampling
 //
-size_t adpcm_resample(ADPCM_HANDLE* adpcm, int16_t* convert_buffer, int16_t* source_buffer, size_t source_buffer_len, int32_t source_pcm_freq, int32_t source_pcm_channels) {
+size_t adpcm_resample(ADPCM_HANDLE* adpcm, int16_t* convert_buffer, int16_t* source_buffer, size_t source_buffer_len, int32_t source_pcm_freq, int16_t source_pcm_channels, int16_t gain) {
 
   size_t convert_buffer_ofs = 0;
   size_t source_buffer_ofs = 0;
@@ -225,11 +225,11 @@ size_t adpcm_resample(ADPCM_HANDLE* adpcm, int16_t* convert_buffer, int16_t* sou
     adpcm->resample_count -= source_pcm_freq;
   
     if (source_pcm_channels == 2) {
-      int16_t x = ( (int32_t)(source_buffer[ source_buffer_ofs ]) + (int32_t)(source_buffer[ source_buffer_ofs + 1 ]) ) / 2;
+      int16_t x = ( (int32_t)(source_buffer[ source_buffer_ofs ]) + (int32_t)(source_buffer[ source_buffer_ofs + 1 ]) ) / 2 / gain;
       convert_buffer[ convert_buffer_ofs++ ] = x;
       source_buffer_ofs += 2;
     } else {
-      convert_buffer[ convert_buffer_ofs++ ] = source_buffer[ source_buffer_ofs++ ];
+      convert_buffer[ convert_buffer_ofs++ ] = source_buffer[ source_buffer_ofs++ ] / gain;
     }
 
   }
