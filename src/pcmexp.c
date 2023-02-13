@@ -10,7 +10,6 @@
 
 #define VERSION "0.1.0 (2023/02/13)"
 
-#define REG_DMAC_CH3_MAR ((volatile uint32_t*)(0xE840C0 + 0x0C))
 #define REG_DMAC_CH3_BAR ((volatile uint32_t*)(0xE840C0 + 0x1C))
 
 static void show_help_message() {
@@ -146,6 +145,10 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
 
   // open pcm file
   fp = fopen(pcm_file_name,"rb");
+  if (fp == NULL) {
+    printf("error: cannot open pcm file (%s).\n", pcm_file_name);
+    goto catch;
+  }
 
   // check file size
   fseek(fp, 0, SEEK_END);
@@ -165,18 +168,20 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
 
   // show PCM driver name
   if (pcm8_mode == 0) {
-    printf("ADPCM control: IOCS\n");
+    //printf("ADPCM control: IOCS\n");
   } else if (pcm8_mode == 1) {
-    printf("ADPCM control: PCM8\n");
+    printf("detected PCM8.X\n");
   } else if (pcm8_mode == 2) {
-    printf("ADPCM control: PCM8A\n");
+    printf("detected PCM8A.X\n");
   }
 
+  // initial buffer fill
+  printf("buffering...\n");
+  int16_t end_flag = 0;
   if (encode_mode) {
 
     int16_t orig_id = adpcm_encoder.current_buffer_id;
 
-    // fill current buffer
     do {
 
       size_t fread_len = fread(fread_buffer, 2, fread_buffer_len, fp);      // 1 unit = 16bit word
@@ -184,6 +189,7 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
       adpcm_encode(&adpcm_encoder, convert_buffer, convert_len * sizeof(int16_t), 16, 1);
       if (fread_len < fread_buffer_len) {
         ch_tbl1.next = NULL;
+        end_flag = 1;
         break;
       }
 
@@ -198,12 +204,13 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
     size_t fread_len = fread(ch_tbl1.buffer, 1, adpcm_encoder.buffer_len, fp);    // 1 unit = 8bit byte
     if (fread_len < adpcm_encoder.buffer_len) {
       ch_tbl1.next = NULL;
+      end_flag = 1;
     }
     ch_tbl1.buffer_bytes = fread_len;
 
   }
 
-  if (ch_tbl1.next != NULL) {
+  if (end_flag == 0) {
 
     if (encode_mode) {
 
@@ -216,6 +223,7 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
         adpcm_encode(&adpcm_encoder, convert_buffer, convert_len * sizeof(int16_t), 16, 1);
         if (fread_len < fread_buffer_len) {
           ch_tbl2.next = NULL;
+          end_flag = 1;
           break;
         }
      
@@ -229,6 +237,7 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
       size_t fread_len = fread(ch_tbl2.buffer, 1, adpcm_encoder.buffer_len, fp);    // 1 unit = 8bit byte
       if (fread_len < adpcm_encoder.buffer_len) {
         ch_tbl2.next = NULL;
+        end_flag = 1;
       }
       ch_tbl2.buffer_bytes = fread_len;
 
@@ -237,18 +246,22 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
 
   // start play
   if (pcm8_mode != 0) {
-    int16_t volume = 0x08;
-    int32_t channel_mode = ( volume << 16 ) | ( 0x04 << 8 ) | 3;
-    //pcm8_set_polyphonic_mode(1);
-    pcm8_play_linked_array_chain(0, channel_mode, &ch_tbl1);
-  } else {
+//    int16_t pcm8_volume = 0x08;
+//    int16_t pcm8_freq = 0x04;
+//    int16_t pcm8_pan = 0x03;
+//    int32_t pcm8_mode = ( pcm8_volume << 16 ) | ( pcm8_freq << 8 ) | pcm8_pan;
+    pcm8_set_polyphonic_mode(0);
+    printf("disabled PCM8 polyphonic mode.\n");
+    //pcm8_play_linked_array_chain(0, pcm8_mode, &ch_tbl1);
+//  } else {
+  }
     int32_t mode = 4 * 256 + 3;
     ADPCMLOT((struct CHAIN2*)(&ch_tbl1), mode);
-  }
+//  }
 
-  printf("push ESC key to stop.\n");
+  printf("\npush ESC key to stop.\n");
 
-  uint32_t cur_bar = REG_DMAC_CH3_BAR[0];
+//  uint32_t cur_bar = REG_DMAC_CH3_BAR[0];
   int16_t cur_buf = 1;
 
   for (;;) {
@@ -261,27 +274,34 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
       }
     }
 
-    for (int32_t t0 = ONTIME(); ONTIME() < t0 + 10;) {}     // wait 100 msec
+    //for (int32_t t0 = ONTIME(); ONTIME() < t0 + 10;) {}     // wait 100 msec
+
+    //void* cur_bar = (void*)REG_DMAC_CH3_BAR[0];  
+    //printf("%d, %X, %X, %X, %X, %X\n", cur_buf, cur_bar, &ch_tbl1, &ch_tbl2, ch_tbl1.buffer, ch_tbl2.buffer);
 
 //    printf("%d, %X, %X, %X, %X\n", cur_buf, cur_mar, cur_bar, ch_tbl1.buffer, ch_tbl2.buffer);
 
     // double buffering
-    if (cur_buf == 1 && ch_tbl2.next != NULL) {
+//    if (cur_buf == 1 && ch_tbl2.next != NULL) {
+    if (cur_buf == 1 && end_flag == 0) {
       int16_t playing_buf = -1;
-      if (pcm8_mode == 0) {
+//      if (pcm8_mode == 0) {
         void* cur_bar = (void*)REG_DMAC_CH3_BAR[0];     // = next chain table pointer
         if (cur_bar == &ch_tbl1) {
           playing_buf = 2;
         }
-        //printf("%d, %X, %X, %X, %X, %X\n", cur_buf, cur_bar, &ch_tbl1, &ch_tbl2, ch_tbl1.buffer, ch_tbl2.buffer);
-      } else if (pcm8_mode == 1) {
-        // TODO
-      } else if (pcm8_mode == 2) {
-        void* pcm8a_addr = pcm8a_get_access_address(0);
-        if (pcm8a_addr >= ch_tbl2.buffer && pcm8a_addr < ch_tbl2.buffer + ch_tbl2.buffer_bytes) {
-          playing_buf = 2;
-        }
-      }
+//      } else if (pcm8_mode == 1) {
+//        void* cur_bar = (void*)REG_DMAC_CH3_BAR[0];     // = next chain table pointer
+//        if (cur_bar == &ch_tbl1) {
+//          playing_buf = 2;
+//        }
+//        printf("%d, %X, %X, %X, %X, %X\n", cur_buf, cur_bar, &ch_tbl1, &ch_tbl2, ch_tbl1.buffer, ch_tbl2.buffer);
+//      } else if (pcm8_mode == 2) {
+//        void* pcm8a_addr = pcm8a_get_access_address(0);
+//        if (pcm8a_addr >= ch_tbl2.buffer && pcm8a_addr < ch_tbl2.buffer + ch_tbl2.buffer_bytes) {
+//          playing_buf = 2;
+//        }
+//      }
 
       if (playing_buf == 2) {
 
@@ -298,6 +318,7 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
             adpcm_encode(&adpcm_encoder, convert_buffer, convert_len * sizeof(int16_t), 16, 1);
             if (fread_len < fread_buffer_len) {
               ch_tbl1.next = NULL;
+              end_flag = 1;
               break;
             }
 
@@ -311,30 +332,42 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
           size_t fread_len = fread(ch_tbl1.buffer, 1, adpcm_encoder.buffer_len, fp);
           if (fread_len < adpcm_encoder.buffer_len) {
             ch_tbl1.next = NULL;
+            end_flag = 1;
           }
           ch_tbl1.buffer_bytes = fread_len;        
 
         }
 
+        // buffer shortage check
+        void* cur_bar = (void*)REG_DMAC_CH3_BAR[0];     // = next chain table pointer
+        if (cur_bar == &ch_tbl2) {
+          printf("error: buffer shortage during playback.\n");
+          goto catch;
+        }
+
       }
 
-    } else if (cur_buf == 2 && ch_tbl1.next != NULL) {
+    } else if (cur_buf == 2 && end_flag == 0) { //ch_tbl1.next != NULL) {
 
       int16_t playing_buf = -1;
-      if (pcm8_mode == 0) {
+//      if (pcm8_mode == 0) {
         void* cur_bar = (void*)REG_DMAC_CH3_BAR[0];   // = next chain table ptr
         if (cur_bar == &ch_tbl2) {
           playing_buf = 1;
         }
         //printf("%d, %X, %X, %X, %X, %X\n", cur_buf, cur_bar, &ch_tbl1, &ch_tbl2, ch_tbl1.buffer, ch_tbl2.buffer);
-      } else if (pcm8_mode == 1) {
-        // TODO
-      } else if (pcm8_mode == 2) {
-        void* pcm8a_addr = pcm8a_get_access_address(0);
-        if (pcm8a_addr >= ch_tbl1.buffer && pcm8a_addr < ch_tbl1.buffer + ch_tbl1.buffer_bytes) {
-          playing_buf = 1;
-        }
-      }
+//      } else if (pcm8_mode == 1) {
+//        void* cur_bar = (void*)REG_DMAC_CH3_BAR[0];     // = next chain table pointer
+//        if (cur_bar == &ch_tbl1) {
+//          playing_buf = 2;
+//        }
+//        printf("%d, %X, %X, %X, %X, %X\n", cur_buf, cur_bar, &ch_tbl1, &ch_tbl2, ch_tbl1.buffer, ch_tbl2.buffer);
+//      } else if (pcm8_mode == 2) {
+//        void* pcm8a_addr = pcm8a_get_access_address(0);
+//        if (pcm8a_addr >= ch_tbl1.buffer && pcm8a_addr < ch_tbl1.buffer + ch_tbl1.buffer_bytes) {
+//          playing_buf = 1;
+//        }
+//      }
 
       if (playing_buf == 1) {
 
@@ -351,6 +384,7 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
             adpcm_encode(&adpcm_encoder, convert_buffer, convert_len * sizeof(int16_t), 16, 1);
             if (fread_len < fread_buffer_len) {
               ch_tbl2.next = NULL;
+              end_flag = 1;
               break;
             }
         
@@ -364,33 +398,44 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
           size_t fread_len = fread(ch_tbl2.buffer, 1, adpcm_encoder.buffer_len, fp);
           if (fread_len < adpcm_encoder.buffer_len) {
             ch_tbl2.next = NULL;
+            end_flag = 1;
           }
           ch_tbl2.buffer_bytes = fread_len;        
 
         }
+
+        // buffer shortage check
+        void* cur_bar = (void*)REG_DMAC_CH3_BAR[0];     // = next chain table pointer
+        if (cur_bar == &ch_tbl1) {
+          printf("error: buffer shortage during playback.\n");
+          goto catch;
+        }
+
       }
     }
  
     // exit if not playing
-    if (pcm8_mode != 0) {
-      if (pcm8_get_data_length(0) == 0) break;
-    } else {
-      if (ADPCMSNS() == 0) break;
-    }
+//    if (pcm8_mode != 0) {
+//      if (pcm8_get_data_length(0) == 0) break;
+//    } else {
+      if (end_flag == 1 && ADPCMSNS() == 0) break;
+//    }
   }
 
   // reset PCM8
-  if (pcm8_mode != 0) {
-    pcm8_pause();
-    pcm8_stop();
-  } else {
-    ADPCMMOD(0);
-  }
+//  if (pcm8_mode != 0) {
+//    pcm8_pause();
+//    pcm8_stop();
+//  } else {
+//    ADPCMMOD(0);
+//  }
 
   // success return code
   rc = 0;
 
 catch:
+  // reset ADPCM
+  ADPCMMOD(0);
 
   // close pcm file
   if (fp != NULL) {
@@ -407,17 +452,24 @@ catch:
     free_himem(fread_buffer, 0);
     fread_buffer = NULL;
   }
-  if (ch_tbl1.buffer != NULL) {
-    free_himem(ch_tbl1.buffer, 0);
-    ch_tbl1.buffer = NULL;
-  }
-  if (ch_tbl2.buffer != NULL) {
-    free_himem(ch_tbl2.buffer, 0);
-    ch_tbl2.buffer = NULL;
-  }
+
+//  if (ch_tbl1.buffer != NULL) {
+//    free_himem(ch_tbl1.buffer, 0);
+//    ch_tbl1.buffer = NULL;
+//  }
+//  if (ch_tbl2.buffer != NULL) {
+//    free_himem(ch_tbl2.buffer, 0);
+//    ch_tbl2.buffer = NULL;
+//  }
 
   // close adpcm encoder
   adpcm_close(&adpcm_encoder);
+
+  // enable pcm8 polyphonic mode
+  if (pcm8_mode != 0) {
+    pcm8_set_polyphonic_mode(1);
+    printf("enabled PCM8 polyphonic mode.\n");
+  }
 
 exit:
 

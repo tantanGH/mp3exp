@@ -10,12 +10,6 @@
 #define ADPCM_BUFFER_COUNT (4)
 
 typedef struct {
-    void* buffer;
-    uint16_t buffer_bytes;
-    void* next;
-} CHAIN_TABLE;
-
-typedef struct {
   int16_t step_index;
   int16_t last_estimate;
   size_t num_samples;

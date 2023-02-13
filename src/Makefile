@@ -19,13 +19,13 @@ HAS = $(RUN68) ${XDEV68K_DIR}/x68k_bin/HAS060.X
 HLK = $(RUN68) ${XDEV68K_DIR}/x68k_bin/hlk301.x
 
 # 実行ファイル名
-TARGET_FILE = PCMEXP.X
+TARGET_FILE = MP3EXP.X
 
 # Document file
-DOCUMENT_FILE = PCMEXP.DOC
+DOCUMENT_FILE = MP3EXP.DOC
 
 # Distribution package 
-PACKAGE_FILE = ../PCMEX010.ZIP
+PACKAGE_FILE = ../MP3EP010.ZIP
 
 # ヘッダ検索パス
 INCLUDE_FLAGS = -I${XDEV68K_DIR}/include/xc -I${XDEV68K_DIR}/include/xdev68k
