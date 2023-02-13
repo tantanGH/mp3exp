@@ -44,7 +44,7 @@ C_SRCS = pcm8.c pcm8a.c memory.c adpcm.c main.c
 ASM_SRCS = 
 
 # *.h source files
-HEADER_SRCS = pcm8.h pcm8a.h memory.h adpcm.h keyboard.h
+HEADER_SRCS = pcm8.h pcm8a.h memory.h adpcm.h keyboard.h mp3exp.h
 
 # リンク対象のライブラリファイル
 LIBS =\
