@@ -1,12 +1,6 @@
 #ifndef __H_PCM8__
 #define __H_PCM8__
 
-typedef struct {
-    void* buffer;
-    uint16_t buffer_bytes;
-    void* next;
-} CHAIN_TABLE;
-
 int32_t pcm8_play(int16_t channel, uint32_t mode, uint32_t size, void* addr);
 int32_t pcm8_play_array_chain(int16_t channel, uint32_t mode, int16_t count, void* addr);
 int32_t pcm8_play_linked_array_chain(int16_t channel, uint32_t mode, void* addr);
