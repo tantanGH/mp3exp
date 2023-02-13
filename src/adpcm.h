@@ -7,7 +7,7 @@
 
 #define ADPCM_SAMPLE_RATE  (15625)        // 15.625kHz
 #define ADPCM_BUFFER_SIZE  (0xff00)
-#define ADPCM_BUFFER_COUNT (4)
+#define ADPCM_BUFFER_COUNT (6) 
 
 typedef struct {
   int16_t step_index;
