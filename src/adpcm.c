@@ -92,7 +92,7 @@ static uint8_t encode(int16_t current_data, int16_t last_estimate, int16_t* step
 //
 //  initialize adpcm handle
 //
-int32_t adpcm_init(ADPCM_HANDLE* adpcm) {
+int32_t adpcm_init(ADPCM_HANDLE* adpcm, int16_t buffer_count) {
 
   int32_t rc = -1;
 
@@ -102,10 +102,11 @@ int32_t adpcm_init(ADPCM_HANDLE* adpcm) {
   adpcm->resample_count = 0;
 
   adpcm->current_buffer_id = 0;
+  adpcm->buffer_count = buffer_count;
   adpcm->buffer_len = ADPCM_BUFFER_SIZE;
   adpcm->buffer_ofs = 0;
 
-  for (int16_t i = 0; i < ADPCM_BUFFER_COUNT; i++) {
+  for (int16_t i = 0; i < adpcm->buffer_count; i++) {
     adpcm->buffers[i] = malloc_himem(adpcm->buffer_len, 0);     // use main memory
     if (adpcm->buffers[i] == NULL) {
       goto exit;
@@ -124,7 +125,7 @@ exit:
 void adpcm_close(ADPCM_HANDLE* adpcm) {
 
   // reclaim buffers
-  for (int16_t i = 0; i < ADPCM_BUFFER_COUNT; i++) {
+  for (int16_t i = 0; i < adpcm->buffer_count; i++) {
     if (adpcm->buffers[i] != NULL) {
       free_himem(adpcm->buffers[i], 0);
       adpcm->buffers[i] = NULL;
@@ -183,7 +184,7 @@ int32_t adpcm_encode(ADPCM_HANDLE* adpcm, void* pcm_buffer, size_t pcm_buffer_le
     // current buffer is full?
     if (adpcm->buffer_ofs >= adpcm->buffer_len) {
       int16_t orig = adpcm->current_buffer_id;
-      adpcm->current_buffer_id = (orig + 1) % ADPCM_BUFFER_COUNT;
+      adpcm->current_buffer_id = (orig + 1) % adpcm->buffer_count;
       adpcm->buffer_ofs = 0;
     }
 
@@ -213,59 +214,43 @@ size_t adpcm_resample(ADPCM_HANDLE* adpcm, int16_t* convert_buffer, int16_t* sou
   size_t convert_buffer_ofs = 0;
   size_t source_buffer_ofs = 0;
 
-  while (source_buffer_ofs < source_buffer_len) {
-  
-    // down sampling
-    adpcm->resample_count += 15625;                 // need to preserve processed count for better accuracy
-    if (adpcm->resample_count < source_pcm_freq) {
-      source_buffer_ofs += source_pcm_channels;     // skip
-      continue;
-    }
+  if (source_pcm_channels == 2) {
 
-    adpcm->resample_count -= source_pcm_freq;
-  
-    if (source_pcm_channels == 2) {
+    while (source_buffer_ofs < source_buffer_len) {
+    
+      // down sampling
+      adpcm->resample_count += 15625;                 // need to preserve processed count for better accuracy
+      if (adpcm->resample_count < source_pcm_freq) {
+        source_buffer_ofs += source_pcm_channels;     // skip
+        continue;
+      }
+
+      adpcm->resample_count -= source_pcm_freq;
+    
       int16_t x = ( (int32_t)(source_buffer[ source_buffer_ofs ]) + (int32_t)(source_buffer[ source_buffer_ofs + 1 ]) ) / 2 / gain;
       convert_buffer[ convert_buffer_ofs++ ] = x;
       source_buffer_ofs += 2;
-    } else {
+
+    }
+
+  } else {
+
+    while (source_buffer_ofs < source_buffer_len) {
+    
+      // down sampling
+      adpcm->resample_count += 15625;                 // need to preserve processed count for better accuracy
+      if (adpcm->resample_count < source_pcm_freq) {
+        source_buffer_ofs += source_pcm_channels;     // skip
+        continue;
+      }
+
+      adpcm->resample_count -= source_pcm_freq;
+
       convert_buffer[ convert_buffer_ofs++ ] = source_buffer[ source_buffer_ofs++ ] / gain;
+
     }
 
   }
 
   return convert_buffer_ofs;
 }
-
-/*
-//
-//  write specific adpcm buffer data to file
-//
-int32_t adpcm_write_buffer(ADPCM_HANDLE* adpcm, FILE* fp, uint8_t* buffer, size_t len) {
-
-  // default return code
-  int32_t rc = -1;
-
-  if (fp == NULL) {
-    printf("error: no available output file handle.\n");
-    goto exit;
-  }
-
-  size_t written = 0;
-  do {
-    written += fwrite(buffer + written, 1, len - written, fp);
-  } while (written < len);
-
-  rc = 0;
-
-exit:
-  return rc;
-}
-
-//
-//  write active adpcm buffer data to file
-//
-int32_t adpcm_write(ADPCM_HANDLE* adpcm, FILE* fp) {
-  return adpcm_write_buffer(adpcm, fp, adpcm->buffers[ adpcm->current_buffer_id ], adpcm->buffer_ofs);
-}
-*/

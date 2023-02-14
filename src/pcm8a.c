@@ -1,10 +1,12 @@
 #include <stdint.h>
 #include <string.h>
+#include <iocslib.h>
 #include "pcm8a.h"
 
 //
 //  play in normal mode ($10xx)
 //
+/*
 int32_t pcm8a_play(int16_t channel, uint32_t mode, uint32_t size, void* addr) {
 
 	register uint32_t reg_d0 asm ("d0") = 0x1000 + channel;
@@ -23,10 +25,12 @@ int32_t pcm8a_play(int16_t channel, uint32_t mode, uint32_t size, void* addr) {
 
   return reg_d0;
 }
+*/
 
 //
 //  play in array chain mode ($11xx)
 //
+/*
 int32_t pcm8a_play_array_chain(int16_t channel, uint32_t mode, int16_t count, void* addr) {
 
 	register uint32_t reg_d0 asm ("d0") = 0x1100 + channel;
@@ -45,6 +49,7 @@ int32_t pcm8a_play_array_chain(int16_t channel, uint32_t mode, int16_t count, vo
 
   return reg_d0;
 }
+*/
 
 //
 //  play in linked array chain mode ($12xx)
@@ -69,6 +74,7 @@ int32_t pcm8a_play_linked_array_chain(int16_t channel, uint32_t mode, void* addr
 //
 //  set channel mode ($17xx)
 //
+/*
 int32_t pcm8a_set_channel_mode(int16_t channel, uint32_t mode) {
 
 	register uint32_t reg_d0 asm ("d0") = 0x1700 + channel;
@@ -83,6 +89,7 @@ int32_t pcm8a_set_channel_mode(int16_t channel, uint32_t mode) {
 
   return reg_d0;
 }
+*/
 
 //
 //  get data length ($18xx)
@@ -104,6 +111,7 @@ int32_t pcm8a_get_data_length(int16_t channel) {
 //
 //  get channel mode ($19xx)
 //
+/*
 int32_t pcm8a_get_channel_mode(int16_t channel) {
 
 	register uint32_t reg_d0 asm ("d0") = 0x1900 + channel;
@@ -117,6 +125,7 @@ int32_t pcm8a_get_channel_mode(int16_t channel) {
 
   return reg_d0;
 }
+*/
 
 //
 //  get access address ($1axx)
@@ -172,6 +181,7 @@ int32_t pcm8a_pause() {
 //
 //  resume all channels ($0102)
 //
+/*
 int32_t pcm8a_resume() {
 
 	register uint32_t reg_d0 asm ("d0") = 0x0102;
@@ -185,6 +195,7 @@ int32_t pcm8a_resume() {
 
   return reg_d0;
 }
+*/
 
 //
 //  set polyphonic mode ($01fc)
@@ -210,7 +221,26 @@ int32_t pcm8a_set_polyphonic_mode(int16_t mode) {
 int32_t pcm8a_keepchk() {
   
   // must be in supervisor mode
-  void* addr = (void*)(((uint32_t*)(0x0088))[0]) - 16;
+  //void* addr = (void*)(((uint32_t*)(0x0088))[0]) - 16;
+  //return (memcmp(addr,"PCM8A",5) == 0 && memcmp(addr+8,"PCM8/048",8) == 0) ? 1 : 0;
 
-  return (memcmp(addr,"PCM8A",5) == 0 && memcmp(addr+8,"PCM8/048",8) == 0) ? 1 : 0;
+  uint8_t eye_catch_addr_bytes[4];
+  for (int16_t i = 0; i < 4; i++) {
+    eye_catch_addr_bytes[i] = B_BPEEK((uint8_t*)(0x0088 + i));
+  }
+  uint8_t* eye_catch_addr = *((uint8_t**)eye_catch_addr_bytes) - 16;
+  //printf("%X,%X\n",addr,eye_catch_addr);
+
+  uint8_t eye_catch1[5];
+  for (int16_t i = 0; i < 5; i++) {
+    eye_catch1[i] = B_BPEEK(eye_catch_addr + i);
+  }
+
+  uint8_t eye_catch2[8];
+  for (int16_t i = 0; i < 8; i++) {
+    eye_catch2[i] = B_BPEEK(eye_catch_addr + i + 8);
+  }
+
+  return (memcmp(eye_catch1, "PCM8A", 5) == 0 && memcmp(eye_catch2, "PCM8/048", 8) == 0) ? 1 : 0;
+
 }
