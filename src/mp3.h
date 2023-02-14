@@ -26,7 +26,7 @@ typedef struct {
   MAD_STREAM mad_stream;
   MAD_FRAME mad_frame;
   MAD_SYNTH mad_synth;
-  MAD_HEADER mad_header;
+//  MAD_HEADER mad_header;
   MAD_TIMER mad_timer;
 
 //  int16_t use_high_memory;
@@ -34,6 +34,8 @@ typedef struct {
   int32_t mp3_bit_rate;
   int32_t mp3_sample_rate;
   int32_t mp3_num_channels;
+
+  size_t resample_counter;
 
   size_t decoded_samples;
 //  size_t decode_buffer_len;
@@ -44,6 +46,8 @@ typedef struct {
 
 int32_t mp3_init(MP3_DECODE_HANDLE* decode);
 void mp3_close(MP3_DECODE_HANDLE* decode);
-size_t mp3_decode(MP3_DECODE_HANDLE* decode, void* mp3_data, size_t mp3_data_len, int16_t* resample_buffer, size_t resample_buffer_len, int16_t resample_freq);
+int32_t mp3_decode(MP3_DECODE_HANDLE* decode, void* mp3_data, size_t mp3_data_len, 
+                   int16_t* resample_buffer, size_t resample_buffer_len, 
+                   int16_t resample_freq, int16_t resample_gain, size_t* resampled_len);
 
 #endif

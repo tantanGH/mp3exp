@@ -99,7 +99,7 @@ int32_t adpcm_init(ADPCM_HANDLE* adpcm, int16_t buffer_count) {
   adpcm->step_index = 0;
   adpcm->last_estimate = 0;
   adpcm->num_samples = 0;
-  adpcm->resample_count = 0;
+  adpcm->resample_counter = 0;
 
   adpcm->current_buffer_id = 0;
   adpcm->buffer_count = buffer_count;
@@ -219,13 +219,13 @@ size_t adpcm_resample(ADPCM_HANDLE* adpcm, int16_t* convert_buffer, int16_t* sou
     while (source_buffer_ofs < source_buffer_len) {
     
       // down sampling
-      adpcm->resample_count += 15625;                 // need to preserve processed count for better accuracy
-      if (adpcm->resample_count < source_pcm_freq) {
+      adpcm->resample_counter += 15625;                 // need to preserve processed count for better accuracy
+      if (adpcm->resample_counter < source_pcm_freq) {
         source_buffer_ofs += source_pcm_channels;     // skip
         continue;
       }
 
-      adpcm->resample_count -= source_pcm_freq;
+      adpcm->resample_counter -= source_pcm_freq;
     
       int16_t x = ( (int32_t)(source_buffer[ source_buffer_ofs ]) + (int32_t)(source_buffer[ source_buffer_ofs + 1 ]) ) / 2 / gain;
       convert_buffer[ convert_buffer_ofs++ ] = x;
@@ -238,13 +238,13 @@ size_t adpcm_resample(ADPCM_HANDLE* adpcm, int16_t* convert_buffer, int16_t* sou
     while (source_buffer_ofs < source_buffer_len) {
     
       // down sampling
-      adpcm->resample_count += 15625;                 // need to preserve processed count for better accuracy
-      if (adpcm->resample_count < source_pcm_freq) {
+      adpcm->resample_counter += 15625;                 // need to preserve processed count for better accuracy
+      if (adpcm->resample_counter < source_pcm_freq) {
         source_buffer_ofs += source_pcm_channels;     // skip
         continue;
       }
 
-      adpcm->resample_count -= source_pcm_freq;
+      adpcm->resample_counter -= source_pcm_freq;
 
       convert_buffer[ convert_buffer_ofs++ ] = source_buffer[ source_buffer_ofs++ ] / gain;
 

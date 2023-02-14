@@ -242,7 +242,7 @@ try:
   fseek(fp, skip_offset, SEEK_SET);
 
   // allocate file read buffer
-  size_t fread_buffer_len = ( decode_mode == DECODE_MODE_MP3 ) ? 320 * 1024 * 2 / 8 : pcm_freq * pcm_channels * 2;      // max 2 sec to read
+  size_t fread_buffer_len = ( decode_mode == DECODE_MODE_MP3 ) ? 256 * 1024 / 8 : pcm_freq * pcm_channels * 2;      // max 2 sec to read
   if (encode_mode != ENCODE_MODE_NONE) {
     fread_buffer = malloc_himem(fread_buffer_len * sizeof(int16_t), use_high_memory);
     if (fread_buffer == NULL) {
@@ -321,9 +321,19 @@ try:
         chain_tables[i].next = NULL;
         end_flag = 1;
       }
-      size_t resample_len = adpcm_resample(&adpcm_encoder, chain_tables[i].buffer, 
-                                            fread_buffer, fread_len, pcm_freq, pcm_channels, pcm_gain);
-      chain_tables[i].buffer_bytes = resample_len * sizeof(int16_t);
+
+      if (decode_mode == DECODE_MODE_MP3) {
+        size_t resampled_len;
+        if (mp3_decode(&mp3_decoder, fread_buffer, fread_len, chain_tables[i].buffer, adpcm_encoder.buffer_len, 15625, pcm_gain, &resampled_len) != 0) {
+          printf("\rerror: mp3 decode error.\x1b[0K");
+          goto catch;
+        }
+        chain_tables[i].buffer_bytes = resampled_len * sizeof(int16_t);
+      } else {
+        size_t resampled_len = adpcm_resample(&adpcm_encoder, chain_tables[i].buffer,
+                                              fread_buffer, fread_len, pcm_freq, pcm_channels, pcm_gain);
+        chain_tables[i].buffer_bytes = resampled_len * sizeof(int16_t);
+      }
 
     } else {
 
@@ -331,9 +341,9 @@ try:
       int16_t orig_id = adpcm_encoder.current_buffer_id;
       do {
         size_t fread_len = fread(fread_buffer, 2, fread_buffer_len, fp);
-        size_t resample_len = adpcm_resample(&adpcm_encoder, resample_buffer, 
+        size_t resampled_len = adpcm_resample(&adpcm_encoder, resample_buffer, 
                                               fread_buffer, fread_len, pcm_freq, pcm_channels, pcm_gain);
-        adpcm_encode(&adpcm_encoder, resample_buffer, resample_len * sizeof(int16_t), 16, 1);
+        adpcm_encode(&adpcm_encoder, resample_buffer, resampled_len * sizeof(int16_t), 16, 1);
         if (fread_len < fread_buffer_len) {
           chain_tables[i].next = NULL;
           end_flag = 1;
@@ -458,11 +468,21 @@ try:
           cta->next = NULL;
           end_flag = 1;
         }
-        size_t resample_len = adpcm_resample(&adpcm_encoder, cta->buffer, 
-                                              fread_buffer, fread_len, pcm_freq, pcm_channels, pcm_gain);
-        cta->buffer_bytes = resample_len * sizeof(int16_t);
 
+      if (decode_mode == DECODE_MODE_MP3) {
+        size_t resampled_len;
+        if (mp3_decode(&mp3_decoder, fread_buffer, fread_len, cta->buffer, adpcm_encoder.buffer_len, 15625, pcm_gain, &resampled_len) != 0) {
+          printf("\rerror: mp3 decode error.\x1b[0K");
+          goto catch;
+        }
+        cta->buffer_bytes = resampled_len * sizeof(int16_t);
       } else {
+        size_t resampled_len = adpcm_resample(&adpcm_encoder, cta->buffer, 
+                                              fread_buffer, fread_len, pcm_freq, pcm_channels, pcm_gain);
+        cta->buffer_bytes = resampled_len * sizeof(int16_t);
+      }
+
+     } else {
 
         // ADPCM self encoding
         int16_t orig_id = adpcm_encoder.current_buffer_id;

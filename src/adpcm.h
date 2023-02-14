@@ -13,7 +13,7 @@ typedef struct {
   int16_t step_index;
   int16_t last_estimate;
   size_t num_samples;
-  size_t resample_count;
+  size_t resample_counter;
   int16_t current_buffer_id;
   int16_t buffer_count;
   size_t buffer_len;
