@@ -7,8 +7,6 @@ ADPCM/PCM/MP3 player for X680x0/Human68k
  - (S32/S44/S48/M32/M44/M48) 16bit符号付き big endian raw PCM
  - (MP3) MP3
 
-X680x0/Human68k 上で動作します。
-
 注意：PCMファイルの再生はRed Zone程度のMPUパワーが最低限必要です。
 
 注意：MP3ファイルの再生は060turboとハイメモリがほぼ必須です。オマケです。
