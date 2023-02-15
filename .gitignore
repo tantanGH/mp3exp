@@ -2,3 +2,4 @@
 src/_build
 src/_work
 Makefile.test
+mp3test.c
