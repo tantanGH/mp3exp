@@ -11,7 +11,11 @@ ADPCM/PCM/MP3 player for X680x0/Human68k
 
 注意：MP3ファイルの再生は060turboとハイメモリがほぼ必須です。オマケです。
 
-注意：このプログラムはコンバータではありません。MP3形式ファイルを ADPCM/PCM 形式に変換するには (MP3EX.X)[https://github.com/tantanGH/mp3ex] の方を使ってください。
+注意：このプログラムはコンバータではありません。MP3形式ファイルを ADPCM/PCM 形式に変換するには
+
+[MP3EX.X](https://github.com/tantanGH/mp3ex)
+
+の方を使ってください。
 
 ---
 
