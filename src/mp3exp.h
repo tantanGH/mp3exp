@@ -1,7 +1,7 @@
 #ifndef __H_MP3EXP__
 #define __H_MP3EXP__
 
-#define VERSION "0.2.0 (2023/02/14)"
+#define VERSION "0.3.0 (2023/02/15)"
 
 #define DECODE_MODE_NONE  (0)
 #define DECODE_MODE_MP3   (1)
