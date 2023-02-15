@@ -8,7 +8,7 @@
 //
 int32_t pcm8a_play(int16_t channel, uint32_t mode, uint32_t size, void* addr) {
 
-	register uint32_t reg_d0 asm ("d0") = 0x1000 + channel;
+  register uint32_t reg_d0 asm ("d0") = 0x1000 + channel;
   register uint32_t reg_d1 asm ("d1") = mode;
   register uint32_t reg_d2 asm ("d2") = size;
   register uint32_t reg_a1 asm ("a1") = (uint32_t)addr;
