@@ -6,7 +6,6 @@
 //
 //  play in normal mode ($10xx)
 //
-/*
 int32_t pcm8a_play(int16_t channel, uint32_t mode, uint32_t size, void* addr) {
 
 	register uint32_t reg_d0 asm ("d0") = 0x1000 + channel;
@@ -25,12 +24,10 @@ int32_t pcm8a_play(int16_t channel, uint32_t mode, uint32_t size, void* addr) {
 
   return reg_d0;
 }
-*/
 
 //
 //  play in array chain mode ($11xx)
 //
-/*
 int32_t pcm8a_play_array_chain(int16_t channel, uint32_t mode, int16_t count, void* addr) {
 
 	register uint32_t reg_d0 asm ("d0") = 0x1100 + channel;
@@ -49,7 +46,6 @@ int32_t pcm8a_play_array_chain(int16_t channel, uint32_t mode, int16_t count, vo
 
   return reg_d0;
 }
-*/
 
 //
 //  play in linked array chain mode ($12xx)
@@ -74,7 +70,6 @@ int32_t pcm8a_play_linked_array_chain(int16_t channel, uint32_t mode, void* addr
 //
 //  set channel mode ($17xx)
 //
-/*
 int32_t pcm8a_set_channel_mode(int16_t channel, uint32_t mode) {
 
 	register uint32_t reg_d0 asm ("d0") = 0x1700 + channel;
@@ -89,7 +84,6 @@ int32_t pcm8a_set_channel_mode(int16_t channel, uint32_t mode) {
 
   return reg_d0;
 }
-*/
 
 //
 //  get data length ($18xx)
@@ -111,7 +105,6 @@ int32_t pcm8a_get_data_length(int16_t channel) {
 //
 //  get channel mode ($19xx)
 //
-/*
 int32_t pcm8a_get_channel_mode(int16_t channel) {
 
 	register uint32_t reg_d0 asm ("d0") = 0x1900 + channel;
@@ -125,7 +118,6 @@ int32_t pcm8a_get_channel_mode(int16_t channel) {
 
   return reg_d0;
 }
-*/
 
 //
 //  get access address ($1axx)
@@ -181,7 +173,6 @@ int32_t pcm8a_pause() {
 //
 //  resume all channels ($0102)
 //
-/*
 int32_t pcm8a_resume() {
 
 	register uint32_t reg_d0 asm ("d0") = 0x0102;
@@ -195,7 +186,6 @@ int32_t pcm8a_resume() {
 
   return reg_d0;
 }
-*/
 
 //
 //  set polyphonic mode ($01fc)
