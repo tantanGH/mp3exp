@@ -2,9 +2,10 @@
 ADPCM/PCM/MP3 player for X680x0/Human68k
 
 以下の形式のファイルを内蔵ADPCMを使って再生します。
-・(PCM) X68K(MSM6258V) ADPCM 15.6kHz mono
-・(S32/S44/S48/M32/M44/M48) 16bit符号付き big endian raw PCM
-・(MP3) MP3
+
+ - (PCM) X68K(MSM6258V) ADPCM 15.6kHz mono
+ - (S32/S44/S48/M32/M44/M48) 16bit符号付き big endian raw PCM
+ - (MP3) MP3
 
 X680x0/Human68k 上で動作します。
 
