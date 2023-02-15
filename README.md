@@ -39,7 +39,7 @@ MPEXPxxx.ZIP をダウンロードして展開し、MP3EXP.X をパスの通っ�
 
 デフォルトでは 12bit PCM から 4bit ADPCMにエンコードに philly さんの PCM8A.X を使用します(PCM8.Xではありません)。
 
-(PCM8A.X)[http://retropc.net/x68000/software/sound/adpcm/pcm8a/]
+[PCM8A.X](http://retropc.net/x68000/software/sound/adpcm/pcm8a/)
 
 PCM8A.X が導入されていない場合、または `-a` オプションをつけた場合は MP3EXP 自身で ADPCMエンコードを行います。精度は担保されますが、処理パフォーマンスは落ちます。MP3ファイルの再生時には PCM8A.X が必ず必要になります。
 
