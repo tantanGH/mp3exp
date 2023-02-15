@@ -8,7 +8,7 @@
 //
 int32_t pcm8_play(int16_t channel, uint32_t mode, uint32_t size, void* addr) {
 
-	register uint32_t reg_d0 asm ("d0") = 0x0000 + channel;
+  register uint32_t reg_d0 asm ("d0") = 0x0000 + channel;
   register uint32_t reg_d1 asm ("d1") = mode;
   register uint32_t reg_d2 asm ("d2") = size;
   register uint32_t reg_a1 asm ("a1") = (uint32_t)addr;
@@ -30,7 +30,7 @@ int32_t pcm8_play(int16_t channel, uint32_t mode, uint32_t size, void* addr) {
 //
 int32_t pcm8_play_array_chain(int16_t channel, uint32_t mode, int16_t count, void* addr) {
 
-	register uint32_t reg_d0 asm ("d0") = 0x0010 + channel;
+  register uint32_t reg_d0 asm ("d0") = 0x0010 + channel;
   register uint32_t reg_d1 asm ("d1") = mode;
   register uint32_t reg_d2 asm ("d2") = count;
   register uint32_t reg_a1 asm ("a1") = (uint32_t)addr;
@@ -52,7 +52,7 @@ int32_t pcm8_play_array_chain(int16_t channel, uint32_t mode, int16_t count, voi
 //
 int32_t pcm8_play_linked_array_chain(int16_t channel, uint32_t mode, void* addr) {
 
-	register uint32_t reg_d0 asm ("d0") = 0x0020 + channel;
+  register uint32_t reg_d0 asm ("d0") = 0x0020 + channel;
   register uint32_t reg_d1 asm ("d1") = mode;
   register uint32_t reg_a1 asm ("a1") = (uint32_t)addr;
 
@@ -72,7 +72,7 @@ int32_t pcm8_play_linked_array_chain(int16_t channel, uint32_t mode, void* addr)
 //
 int32_t pcm8_set_channel_mode(int16_t channel, uint32_t mode) {
 
-	register uint32_t reg_d0 asm ("d0") = 0x0070 + channel;
+  register uint32_t reg_d0 asm ("d0") = 0x0070 + channel;
   register uint32_t reg_d1 asm ("d1") = mode;
 
   asm volatile (
@@ -90,7 +90,7 @@ int32_t pcm8_set_channel_mode(int16_t channel, uint32_t mode) {
 //
 int32_t pcm8_get_data_length(int16_t channel) {
 
-	register uint32_t reg_d0 asm ("d0") = 0x0080 + channel;
+  register uint32_t reg_d0 asm ("d0") = 0x0080 + channel;
 
   asm volatile (
     "trap #2\n"         // trap #2
@@ -107,7 +107,7 @@ int32_t pcm8_get_data_length(int16_t channel) {
 //
 int32_t pcm8_get_channel_mode(int16_t channel) {
 
-	register uint32_t reg_d0 asm ("d0") = 0x0090 + channel;
+  register uint32_t reg_d0 asm ("d0") = 0x0090 + channel;
 
   asm volatile (
     "trap #2\n"         // trap #2
@@ -124,7 +124,7 @@ int32_t pcm8_get_channel_mode(int16_t channel) {
 //
 int32_t pcm8_stop() {
 
-	register uint32_t reg_d0 asm ("d0") = 0x0100;
+  register uint32_t reg_d0 asm ("d0") = 0x0100;
 
   asm volatile (
     "trap #2\n"         // trap #2
@@ -141,7 +141,7 @@ int32_t pcm8_stop() {
 //
 int32_t pcm8_pause() {
 
-	register uint32_t reg_d0 asm ("d0") = 0x0101;
+  register uint32_t reg_d0 asm ("d0") = 0x0101;
 
   asm volatile (
     "trap #2\n"         // trap #2
@@ -158,7 +158,7 @@ int32_t pcm8_pause() {
 //
 int32_t pcm8_resume() {
 
-	register uint32_t reg_d0 asm ("d0") = 0x0102;
+  register uint32_t reg_d0 asm ("d0") = 0x0102;
 
   asm volatile (
     "trap #2\n"         // trap #2
@@ -175,7 +175,7 @@ int32_t pcm8_resume() {
 //
 int32_t pcm8_set_polyphonic_mode(int16_t mode) {
 
-	register uint32_t reg_d0 asm ("d0") = 0x01fc;
+  register uint32_t reg_d0 asm ("d0") = 0x01fc;
   register uint32_t reg_d1 asm ("d1") = mode;
 
   asm volatile (
@@ -192,10 +192,6 @@ int32_t pcm8_set_polyphonic_mode(int16_t mode) {
 //  pcm8 keep check
 //
 int32_t pcm8_keepchk() {
-  
-  // must be in supervisor mode
-  //void* addr = (void*)(((uint32_t*)(0x0088))[0]) - 8;
-  //return (memcmp(addr,"PCM8/048",8) == 0) ? 1 : 0;
 
   uint8_t eye_catch_addr_bytes[4];
   for (int16_t i = 0; i < 4; i++) {
