@@ -33,18 +33,16 @@ INCLUDE_FLAGS = -I${XDEV68K_DIR}/include/xc -I${XDEV68K_DIR}/include/xdev68k -I$
 
 # コンパイルフラグ
 COMMON_FLAGS = -m68000 -Os $(INCLUDE_FLAGS)
-#CFLAGS = $(COMMON_FLAGS) -Wno-builtin-declaration-mismatch -fcall-used-d2 -fcall-used-a2 -finput-charset=cp932 -fexec-charset=cp932 -fverbose-asm
-#CFLAGS = $(COMMON_FLAGS) -Wno-builtin-declaration-mismatch -fcall-used-d2 -fcall-used-a2 -fverbose-asm -D__time_t_defined -D__clock_t_defined
 CFLAGS = $(COMMON_FLAGS) -fno-conserve-stack -Wno-builtin-declaration-mismatch -fcall-used-d2 -finput-charset=cp932 -fexec-charset=cp932 -fcall-used-a2 -fverbose-asm
 
 # *.c ソースファイル
-C_SRCS = pcm8.c pcm8a.c memory.c adpcm.c mp3.c main.c
+C_SRCS = memory.c pcm8.c pcm8a.c adpcm.c mp3.c main.c
 
 # *.s ソースファイル
 ASM_SRCS = 
 
 # *.h source files
-HEADER_SRCS = keyboard.h pcm8.h pcm8a.h memory.h adpcm.h mp3.h keyboard.h mp3exp.h
+HEADER_SRCS = keyboard.h memory.h pcm8.h pcm8a.h adpcm.h mp3.h keyboard.h mp3exp.h
 
 # リンク対象のライブラリファイル
 LIBS =\

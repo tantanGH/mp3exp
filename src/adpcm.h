@@ -5,7 +5,7 @@
 #include <stdint.h>
 #include <stddef.h>
 
-#define ADPCM_SAMPLE_RATE  (15625)        // 15.625kHz
+#define ADPCM_SAMPLE_RATE  (15625)
 #define ADPCM_BUFFER_SIZE  (0xff00)
 #define ADPCM_MAX_BUFFER_COUNT (40)
 

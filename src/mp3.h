@@ -6,13 +6,6 @@
 #include <stddef.h>
 #include "mad.h"
 
-//#define DECODE_BUFFER_LEN (48000*2*2*4)
-
-typedef struct {
-  uint8_t* start;
-  size_t length;
-} MAD_BUFFER;
-
 typedef struct mad_stream MAD_STREAM;
 typedef struct mad_synth MAD_SYNTH;
 typedef struct mad_header MAD_HEADER;
@@ -43,8 +36,6 @@ typedef struct {
 
 int32_t mp3_init(MP3_DECODE_HANDLE* decode, void* mp3_data, size_t mp3_data_len);
 void mp3_close(MP3_DECODE_HANDLE* decode);
-int32_t mp3_decode(MP3_DECODE_HANDLE* decode, 
-                   int16_t* resample_buffer, size_t resample_buffer_len, 
-                   int16_t resample_freq, size_t* resampled_len);
+int32_t mp3_decode(MP3_DECODE_HANDLE* decode, int16_t* resample_buffer, size_t resample_buffer_len, int16_t resample_freq, size_t* resampled_len);
 
 #endif

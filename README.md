@@ -51,6 +51,46 @@ PCM8A.X が導入されていない場合、または `-a` オプションをつ
 
 ---
 
+### データフォーマットごとの要求MPU能力
+
+* ADPCMファイル
+
+エミュレータでの検証しかしていませんが、ディスク読み込みが遅くなければ 68000 10MHz機でも大丈夫なはずです。
+
+* PCMファイル
+
+エミュレータでの検証では S44 (44.1kHz 16bit PCM stereo) の再生には最低 68000 24MHz が必要です。実機ではX68030以上を推奨します。
+
+* MP3ファイル
+
+エミュレータと実機での検証結果は以下になります。
+
+機種|MP3デコーダ|ADPCMエンコーダ|バッファ|MP3(固定128k)|MP3(固定256k)|MP3(VBR約256k)
+-|-|-|-|-|-|-
+XEiJ X68000 Hybrid (600MHz)|MP3EXP(0.3.0)|PCM8A(1.02)|4 * 64KB|buffer underrun|buffer underrun|buffer underrun
+XEiJ X68000 Hybrid (700MHz)|MP3EXP(0.3.0)|PCM8A(1.02)|4 * 64KB|buffer underrun|buffer underrun|buffer underrun
+XEiJ X68000 Hybrid (800MHz)|MP3EXP(0.3.0)|PCM8A(1.02)|4 * 64KB|OK|buffer underrun|buffer underrun
+XEiJ X68000 Hybrid (900MHz)|MP3EXP(0.3.0)|PCM8A(1.02)|4 * 64KB|OK|OK|OK
+XEiJ X68000 Hybrid (999.9MHz)|MP3EXP(0.3.0)|PCM8A(1.02)|4 * 64KB|OK|OK|OK
+-|-|-|-|-|-|-
+XEiJ X68030 (400MHz)|MP3EXP(0.3.0)|PCM8A(1.02)|4 * 64KB|buffer underrun|buffer underrun|buffer underrun
+XEiJ X68030 (500MHz)|MP3EXP(0.3.0)|PCM8A(1.02)|4 * 64KB|buffer underrun|buffer underrun|buffer underrun
+XEiJ X68030 (600MHz)|MP3EXP(0.3.0)|PCM8A(1.02)|4 * 64KB|OK|buffer underrun|buffer underrun
+XEiJ X68030 (700MHz)|MP3EXP(0.3.0)|PCM8A(1.02)|4 * 64KB|OK|OK|OK
+XEiJ X68030 (800MHz)|MP3EXP(0.3.0)|PCM8A(1.02)|4 * 64KB|OK|OK|OK
+-|-|-|-|-|-|-
+XEiJ 060turbo (33MHz) + 060loadhigh|MP3EXP(0.3.0)|PCM8A(1.02)|4 * 64KB (+ハイメモリ)|buffer underrun|buffer underrun|buffer underrun
+XEiJ 060turbo (50MHz) + 060loadhigh|MP3EXP(0.3.0)|PCM8A(1.02)|4 * 64KB (+ハイメモリ)|buffer underrun|buffer underrun|buffer underrun
+XEiJ 060turbo (75MHz) + 060loadhigh|MP3EXP(0.3.0)|PCM8A(1.02)|4 * 64KB (+ハイメモリ)|OK|OK|OK
+XEiJ 060turbo (100MHz) + 060loadhigh|MP3EXP(0.3.0)|PCM8A(1.02)|4 * 64KB (+ハイメモリ)|OK|OK|OK
+-|-|-|-|-|-|-
+実機 060turbo(50MHz,スタカラOFF) + 060loadhigh|MP3EXP(0.3.0)|PCM8A(1.02)|4 * 64KB (+ハイメモリ)			
+実機 060turbo(50MHz,スタカラOFF) + 060loadhigh|MP3EXP(0.3.0)|PCM8A(1.02)|8 * 64KB (+ハイメモリ)			
+実機 060turbo(50MHz,スタカラOFF) + 060loadhigh|MP3EXP(0.3.0)|PCM8A(1.02)|12 * 64KB (+ハイメモリ)			
+実機 060turbo(50MHz,スタカラOFF) + 060loadhigh|MP3EXP(0.3.0)|PCM8A(1.02)|16 * 64KB (+ハイメモリ)			
+
+---
+
 ### License
 
 MP3デコードライブラリとして libmad 0.15.1b をx68k向けにコンパイルしたものを利用させて頂いており、ライセンスは libmad のもの (GPLv2) に準じます。

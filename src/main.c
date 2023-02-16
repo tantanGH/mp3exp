@@ -189,7 +189,7 @@ loop:
   FILE* fp = NULL;
 
 try:
-
+  // encoder, decoder and chain tables
   ADPCM_HANDLE adpcm_encoder = { 0 };
   MP3_DECODE_HANDLE mp3_decoder = { 0 };
   static CHAIN_TABLE chain_tables[ MAX_CHAINS ];
@@ -312,7 +312,7 @@ try:
     first_play = 0;
   }
 
-  // preplay buffering
+  // initial buffering
   int16_t end_flag = 0;
   for (int16_t i = 0; i < num_chains; i++) {
 
@@ -408,7 +408,7 @@ try:
 
   }
 
-  printf("\rnow playing ... push ESC key to stop.\x1b[0K");
+  printf("\rnow playing ... push [ESC]/[Q] key to stop.\x1b[0K");
 
   // dummy wait to make sure DMAC start (300 msec)
   for (int32_t t0 = ONTIME(); ONTIME() < t0 + 30;) {}
@@ -420,7 +420,7 @@ try:
     // check esc key to exit
     if (B_KEYSNS() != 0) {
       int16_t scan_code = B_KEYINP() >> 8;
-      if (scan_code == KEY_SCAN_CODE_ESC) {
+      if (scan_code == KEY_SCAN_CODE_ESC || scan_code == KEY_SCAN_CODE_Q) {
         printf("\rstopped.\x1b[0K");
         rc = 1;
         break;
@@ -428,31 +428,40 @@ try:
     }
  
     // exit if not playing
-    if (end_flag) {
-      if (encode_mode == ENCODE_MODE_PCM8A) {
-        if (pcm8a_get_data_length(0) == 0) {
+    if (encode_mode == ENCODE_MODE_PCM8A) {
+      if (pcm8a_get_data_length(0) == 0) {
+        if (end_flag) { 
           printf("\rfinished.\x1b[0K");
           rc = 0;
-          break;
+        } else {
+          printf("\rerror: buffer underrun detected.\x1b[0K");
+          rc = 1;
         }
-      } else {
-        if (ADPCMSNS() == 0) {
+        break;
+      }
+    } else {
+      if (ADPCMSNS() == 0) {
+        if (end_flag) {
           printf("\rfinished.\x1b[0K");
           rc = 0;
-          break;
+        } else {
+          printf("\rerror: buffer underrun detected.\x1b[0K");
+          rc = 1;
         }
+        break;
       }
     }
 
     // check buffer flip
     CHAIN_TABLE* cta = &(chain_tables[ current_chain ]);
+    CHAIN_TABLE* ctb = &(chain_tables[ (current_chain - 1 + num_chains) % num_chains ]);
     int16_t buffer_flip = 0;
     if (encode_mode == ENCODE_MODE_PCM8A) {
-      void* pcm8a_addr = pcm8a_get_access_address(0);
-      if (pcm8a_addr < cta->buffer || pcm8a_addr >= cta->buffer + cta->buffer_bytes) {
+      void* cur_pcm8a_addr = pcm8a_get_access_address(0);
+      if (cur_pcm8a_addr < cta->buffer || cur_pcm8a_addr >= cta->buffer + cta->buffer_bytes) {
         buffer_flip = 1;
 #ifdef DEBUG
-        printf("pcm8a=%X, ct0 buffer=%X - %X, ct1 buffer=%X - %X, ct2 buffer=%X - %X, ct3 buffer=%X - %X\n", pcm8a_addr, 
+        printf("pcm8a=%X, ct0 buffer=%X - %X, ct1 buffer=%X - %X, ct2 buffer=%X - %X, ct3 buffer=%X - %X\n", cur_pcm8a_addr, 
         chain_tables[0].buffer, chain_tables[0].buffer + chain_tables[0].buffer_bytes,
         chain_tables[1].buffer, chain_tables[1].buffer + chain_tables[1].buffer_bytes,
         chain_tables[2].buffer, chain_tables[2].buffer + chain_tables[2].buffer_bytes, 
@@ -460,9 +469,12 @@ try:
 #endif
       }
     } else {
-      void* cur_bar = (void*)B_LPEEK((uint32_t*)REG_DMAC_CH3_BAR);     // = next chain table pointer
-      if (cur_bar != cta->next) {
+      void* cur_dmac_bar = (void*)B_LPEEK((uint32_t*)REG_DMAC_CH3_BAR);     // = next chain table pointer
+      if (cur_dmac_bar != cta->next) {
         buffer_flip = 1;
+#ifdef DEBUG
+        printf("cur_bar=%X, cta->next=%X\n", cur_dmac_bar, cta->next);
+#endif
       }
     }
 
@@ -472,6 +484,9 @@ try:
 #ifdef DEBUG
       printf("buffer flip (current chain = %d)\n", current_chain);
 #endif
+      // cut link tantatively
+      void* orig_ctb_next = ctb->next;
+      ctb->next = NULL;
 
       if (encode_mode == ENCODE_MODE_NONE) {
 
@@ -534,8 +549,13 @@ try:
 
       }
 
+      // resume link
+      ctb->next = orig_ctb_next;
+
+      // increment focus chain
       current_chain = ( current_chain + 1 ) % num_chains;
 
+#ifdef OBSOLETE_BUFFER_UNDERRUN_CHECK
       // buffer underrun check
       if (end_flag == 0) {    // if already in the last chain, continue risk play
         if (encode_mode == ENCODE_MODE_PCM8A) {
@@ -545,13 +565,14 @@ try:
             goto catch;            
           }
         } else {
-          void* cur_bar = (void*)B_LPEEK((uint32_t*)REG_DMAC_CH3_BAR);     // = next chain table pointer
-          if (cur_bar == cta->next) {
+          void* cur_dmac_bar2 = (void*)B_LPEEK((uint32_t*)REG_DMAC_CH3_BAR);     // = next chain table pointer
+          if (cur_dmac_bar2 == cta->next) {
             printf("\rerror: buffer underrun during playback.\n");
             goto catch;
           }
         }
       }
+#endif
     }
 
   }
