@@ -338,6 +338,7 @@ try:
       int16_t scan_code = B_KEYINP() >> 8;
       if (scan_code == KEY_SCAN_CODE_ESC || scan_code == KEY_SCAN_CODE_Q) {
         printf("\rcanceled.\x1b[0K");
+        rc = 1;
         goto catch;
       }
     }
