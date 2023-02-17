@@ -333,6 +333,15 @@ try:
 
     if (end_flag) break;
 
+    // check esc key to exit
+    if (B_KEYSNS() != 0) {
+      int16_t scan_code = B_KEYINP() >> 8;
+      if (scan_code == KEY_SCAN_CODE_ESC || scan_code == KEY_SCAN_CODE_Q) {
+        printf("\rcanceled.\x1b[0K");
+        goto catch;
+      }
+    }
+
     printf("\rnow buffering (%d/%d) on %s ...", i+1, num_chains, 
       use_high_memory ? "high memory and main memory" : "main memory");
 
