@@ -39,7 +39,7 @@ MPEXPxxx.ZIP をダウンロードして展開し、MP3EXP.X をパスの通っ�
          -q    ... mp3 high quality mode
          -h    ... show help message
 
-デフォルトでは 12bit PCM から 4bit ADPCMのエンコードに philly さんの PCM8A.X を使用します(オリジナルのPCM8.Xではありません)。
+デフォルトではADPCMのエンコードに philly さんの PCM8A.X を使用します(オリジナルのPCM8.Xではありません)。
 
 [PCM8A.X](http://retropc.net/x68000/software/sound/adpcm/pcm8a/)
 
