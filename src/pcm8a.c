@@ -188,6 +188,24 @@ int32_t pcm8a_resume() {
 }
 
 //
+//  set system information ($01f8)
+//
+int32_t pcm8a_set_system_information(uint32_t sys_info) {
+
+  register uint32_t reg_d0 asm ("d0") = 0x01fc;
+  register uint32_t reg_d1 asm ("d1") = sys_info;
+
+  asm volatile (
+    "trap #2\n"         // trap #2
+    : "+r"  (reg_d0)    // output (&input) operand
+    : "r"   (reg_d1)    // input operand
+    :                   // clobbered register
+  );
+
+  return reg_d0;
+}
+
+//
 //  set polyphonic mode ($01fc)
 //
 int32_t pcm8a_set_polyphonic_mode(int16_t mode) {

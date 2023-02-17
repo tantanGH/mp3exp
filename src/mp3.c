@@ -41,14 +41,16 @@ static inline int16_t scale_12bit(mad_fixed_t sample) {
 //
 //  init decoder handle
 //
-int32_t mp3_init(MP3_DECODE_HANDLE* decode, void* mp3_data, size_t mp3_data_len) {
+int32_t mp3_init(MP3_DECODE_HANDLE* decode, void* mp3_data, size_t mp3_data_len, int16_t mp3_high_quality) {
 
   decode->mp3_data = mp3_data;
   decode->mp3_data_len = mp3_data_len;
-  decode->mp3_bit_rate = -1;
-  decode->mp3_sample_rate = -1;
-  decode->mp3_num_channels = -1;
+//  decode->mp3_bit_rate = -1;
+//  decode->mp3_sample_rate = -1;
+//  decode->mp3_num_channels = -1;
   decode->resample_counter = 0;
+
+  decode->mp3_frame_options = mp3_high_quality ? 0 : MAD_OPTION_HALFSAMPLERATE | MAD_OPTION_IGNORECRC;
 
   memset(&(decode->mad_stream), 0, sizeof(MAD_STREAM));
   memset(&(decode->mad_frame), 0, sizeof(MAD_FRAME));
@@ -104,13 +106,15 @@ int32_t mp3_decode(MP3_DECODE_HANDLE* decode, int16_t* resample_buffer, size_t r
         }
       }
 
-      if (decode->mp3_bit_rate < 0) {
-        MAD_HEADER* h = &(decode->mad_frame.header);
-        decode->mp3_bit_rate = h->bitrate;
-        decode->mp3_sample_rate = h->samplerate;
-        decode->mp3_num_channels = h->mode == MAD_MODE_SINGLE_CHANNEL ? 1 : 2;
-      }
-      
+//      if (decode->mp3_bit_rate < 0) {
+//        MAD_HEADER* h = &(decode->mad_frame.header);
+//        decode->mp3_bit_rate = h->bitrate;
+//        decode->mp3_sample_rate = h->samplerate;
+//        decode->mp3_num_channels = h->mode == MAD_MODE_SINGLE_CHANNEL ? 1 : 2;
+//      }
+
+      decode->mad_frame.options = decode->mp3_frame_options;
+
       mad_synth_frame(&(decode->mad_synth), &(decode->mad_frame));
       mad_timer_add(&(decode->mad_timer), decode->mad_frame.header.duration);
 
@@ -137,8 +141,7 @@ int32_t mp3_decode(MP3_DECODE_HANDLE* decode, int16_t* resample_buffer, size_t r
         decode->resample_counter -= pcm->samplerate;
     
         // stereo to mono
-        int16_t x = ( scale_12bit(pcm->samples[0][i]) + scale_12bit(pcm->samples[1][i]) ) / 2;
-        resample_buffer[ resample_ofs++ ] = x;
+        resample_buffer[ resample_ofs++ ] = ( scale_12bit(pcm->samples[0][i]) + scale_12bit(pcm->samples[1][i]) ) / 2;
 
       }
 
@@ -154,8 +157,7 @@ int32_t mp3_decode(MP3_DECODE_HANDLE* decode, int16_t* resample_buffer, size_t r
 
         decode->resample_counter -= pcm->samplerate;
     
-        int16_t x = scale_12bit(pcm->samples[0][i]);
-        resample_buffer[ resample_ofs++ ] = x;
+        resample_buffer[ resample_ofs++ ] = scale_12bit(pcm->samples[0][i]);
 
       }
 

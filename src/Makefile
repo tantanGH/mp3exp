@@ -25,7 +25,7 @@ TARGET_FILE = MP3EXP.X
 DOCUMENT_FILE = MP3EXP.DOC
 
 # Distribution package 
-PACKAGE_FILE = ../MPEXP030.ZIP
+PACKAGE_FILE = ../MPEXP040.ZIP
 
 # ヘッダ検索パス
 INCLUDE_FLAGS = -I${XDEV68K_DIR}/include/xc -I${XDEV68K_DIR}/include/xdev68k -I${XDEV68K_DIR}/include/mad
@@ -33,6 +33,7 @@ INCLUDE_FLAGS = -I${XDEV68K_DIR}/include/xc -I${XDEV68K_DIR}/include/xdev68k -I$
 
 # コンパイルフラグ
 COMMON_FLAGS = -m68000 -Os $(INCLUDE_FLAGS)
+#COMMON_FLAGS = -m68060 -msoft-float -Os $(INCLUDE_FLAGS)
 CFLAGS = $(COMMON_FLAGS) -fno-conserve-stack -Wno-builtin-declaration-mismatch -fcall-used-d2 -finput-charset=cp932 -fexec-charset=cp932 -fcall-used-a2 -fverbose-asm
 
 # *.c ソースファイル

@@ -11,6 +11,7 @@ void* pcm8a_get_access_address(int16_t channel);
 int32_t pcm8a_stop();
 int32_t pcm8a_pause();
 int32_t pcm8a_resume();
+int32_t pcm8a_set_system_information(uint32_t sys_info);
 int32_t pcm8a_set_polyphonic_mode(int16_t mode);
 int32_t pcm8a_keepchk();
 

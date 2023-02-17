@@ -26,15 +26,17 @@ typedef struct {
   void* mp3_data;
   size_t mp3_data_len;
 
-  int32_t mp3_bit_rate;
-  int32_t mp3_sample_rate;
-  int32_t mp3_num_channels;
+  int32_t mp3_frame_options;
+
+//  int32_t mp3_bit_rate;
+//  int32_t mp3_sample_rate;
+//  int32_t mp3_num_channels;
 
   size_t resample_counter;
 
 } MP3_DECODE_HANDLE;
 
-int32_t mp3_init(MP3_DECODE_HANDLE* decode, void* mp3_data, size_t mp3_data_len);
+int32_t mp3_init(MP3_DECODE_HANDLE* decode, void* mp3_data, size_t mp3_data_len, int16_t mp3_high_quality);
 void mp3_close(MP3_DECODE_HANDLE* decode);
 int32_t mp3_decode(MP3_DECODE_HANDLE* decode, int16_t* resample_buffer, size_t resample_buffer_len, int16_t resample_freq, size_t* resampled_len);
 
