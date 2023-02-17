@@ -1,7 +1,8 @@
 # MP3EXP.X
 ADPCM/PCM/MP3 player for X680x0/Human68k
 
-以下の形式のファイルを内蔵ADPCMを使って再生します。ファイルの種別は拡張子で判断します。
+以下の形式のファイルを内蔵ADPCMを使って再生します。出力音質はすべてADPCM 15.6kHz monoとなります。
+ファイルの種別は拡張子で判断します。
 
  - X68K(MSM6258V) ADPCM 15.6kHz mono (.PCM)
  - 16bit符号付き big endian raw PCM (.S32/.S44/.S48/.M32/.M44/.M48)
