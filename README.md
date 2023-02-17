@@ -8,8 +8,6 @@ ADPCM/PCM/MP3 player for X680x0/Human68k
  - 16bit符号付き big endian raw PCM (.S32/.S44/.S48/.M32/.M44/.M48)
  - MP3 (.MP3)
 
-注意：raw PCMファイルの再生はRed Zone (68000 24MHz)程度のMPUパワーが最低限必要です。
-
 注意：MP3ファイルの再生はかなりのMPUパワーを必要とします。事実上エミュレータ向けのオマケです。
 
 注意：このプログラムはコンバータではありません。MP3形式ファイルを ADPCM/PCM 形式に変換するには
