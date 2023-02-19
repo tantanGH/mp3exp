@@ -25,11 +25,10 @@ TARGET_FILE = MP3EXP.X
 DOCUMENT_FILE = MP3EXP.DOC
 
 # Distribution package 
-PACKAGE_FILE = ../MPEXP040.ZIP
+PACKAGE_FILE = ../MPEXP050.ZIP
 
 # ヘッダ検索パス
 INCLUDE_FLAGS = -I${XDEV68K_DIR}/include/xc -I${XDEV68K_DIR}/include/xdev68k -I${XDEV68K_DIR}/include/mad
-
 
 # コンパイルフラグ
 COMMON_FLAGS = -m68000 -Os $(INCLUDE_FLAGS)
@@ -37,22 +36,23 @@ COMMON_FLAGS = -m68000 -Os $(INCLUDE_FLAGS)
 CFLAGS = $(COMMON_FLAGS) -fno-conserve-stack -Wno-builtin-declaration-mismatch -fcall-used-d2 -finput-charset=cp932 -fexec-charset=cp932 -fcall-used-a2 -fverbose-asm
 
 # *.c ソースファイル
-C_SRCS = memory.c pcm8.c pcm8a.c adpcm.c mp3.c main.c
+C_SRCS = memory.c pcm8.c pcm8a.c pcm8pp.c adpcm.c mp3.c main.c
 
 # *.s ソースファイル
 ASM_SRCS = 
 
 # *.h source files
-HEADER_SRCS = keyboard.h memory.h pcm8.h pcm8a.h adpcm.h mp3.h keyboard.h mp3exp.h
+HEADER_SRCS = keyboard.h memory.h pcm8.h pcm8a.h pcm8pp.h adpcm.h mp3.h keyboard.h mp3exp.h
 
 # リンク対象のライブラリファイル
+# link custom libmad objects compiled with OPT_SPEED option instead of normal libmad.a
 LIBS =\
 	${XDEV68K_DIR}/lib/xc/CLIB.L \
 	${XDEV68K_DIR}/lib/xc/DOSLIB.L \
 	${XDEV68K_DIR}/lib/xc/IOCSLIB.L \
 	${XDEV68K_DIR}/lib/xc/FLOATFNC.L \
-	${XDEV68K_DIR}/lib/mad/libmad.a \
-	${XDEV68K_DIR}/lib/m68k_elf/m68000/libgcc.a \
+	${XDEV68K_DIR}/lib/mad/libmad-optspeed.a \
+	${XDEV68K_DIR}/lib/m68k_elf/m68000/libgcc.a
 
 # 中間ファイル生成用ディレクトリ
 INTERMEDIATE_DIR = _build

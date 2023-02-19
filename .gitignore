@@ -1,3 +1,6 @@
 .DS_Store
 src/_build
 src/_work
+libmad-0.15.1b/_build
+libmad-0.15.1b/_lk_list.tmp
+libmad-0.15.1b/libmad.a

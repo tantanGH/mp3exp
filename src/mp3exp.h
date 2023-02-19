@@ -1,18 +1,23 @@
 #ifndef __H_MP3EXP__
 #define __H_MP3EXP__
 
-#define VERSION "0.4.0 (2023/02/17)"
+#define VERSION "0.5.0 (2023/02/19)"
 
-#define DECODE_MODE_NONE  (0)
-#define DECODE_MODE_MP3   (1)
+#define REG_DMAC_CH3_BAR (0xE840C0 + 0x1C)
 
-#define ENCODE_MODE_NONE  (0)
-#define ENCODE_MODE_SELF  (1)
-#define ENCODE_MODE_PCM8A (2)
+#define PCM8_TYPE_NONE    (0)
+#define PCM8_TYPE_PCM8    (1)
+#define PCM8_TYPE_PCM8A   (2)
+#define PCM8_TYPE_PCM8PP  (3)
 
-#define PCM8_MODE_NONE  (0)
-#define PCM8_MODE_PCM8  (1)
-#define PCM8_MODE_PCM8A (2)
+#define DECODE_MODE_NONE     (0)
+#define DECODE_MODE_RESAMPLE (1)
+#define DECODE_MODE_MP3      (2)
+
+#define ENCODE_MODE_NONE   (0)
+#define ENCODE_MODE_SELF   (1)
+#define ENCODE_MODE_PCM8A  (2)
+#define ENCODE_MODE_PCM8PP (3)
 
 #define MAX_CHAINS (32)
 

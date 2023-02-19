@@ -8,11 +8,10 @@
 #include "memory.h"
 #include "pcm8.h"
 #include "pcm8a.h"
+#include "pcm8pp.h"
 #include "adpcm.h"
 #include "mp3.h"
 #include "mp3exp.h"
-
-#define REG_DMAC_CH3_BAR (0xE840C0 + 0x1C)
 
 //#define DEBUG
 
@@ -38,7 +37,7 @@ static void abort_application() {
 static void show_help_message() {
   printf("usage: mp3exp [options] <input-file[.pcm|.s32|.s44|.s48|.m32|.m44|.m48|.mp3]>\n");
   printf("options:\n");
-  printf("     -a    ... do not use PCM8A.X for ADPCM encoding\n");
+  printf("     -a    ... use MP3EXP for ADPCM encoding\n");
   printf("     -b<n> ... buffer size [x 64KB] (2-32,default:4)\n");
   printf("     -u    ... use 060turbo high memory for buffering\n");
   printf("     -l[n] ... loop count (none:infinite, default:1)\n");
@@ -57,7 +56,7 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
 
   // parse command line options
   uint8_t* pcm_file_name = NULL;
-  int16_t encode_with_pcm8a = 1;
+  int16_t encode_with_self = 0;
   int16_t num_chains = 4;
   int16_t loop_count = 1;
   int16_t use_high_memory = 0;
@@ -66,7 +65,7 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
   for (int16_t i = 1; i < argc; i++) {
     if (argv[i][0] == '-' && strlen(argv[i]) >= 2) {
       if (argv[i][1] == 'a') {
-        encode_with_pcm8a = 0;
+        encode_with_self = 1;
       } else if (argv[i][1] == 'b') {
         num_chains = atoi(argv[i]+2);
         if (num_chains < 2 || num_chains > 32) {
@@ -111,43 +110,50 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
   // input format check
   int32_t pcm_freq = 15625;
   int16_t pcm_channels = 1;
-  int16_t pcm_gain = encode_with_pcm8a ? 16 : 1; 
+  int16_t pcm_gain = encode_with_self ? 1 : 16; 
   int32_t decode_mode = DECODE_MODE_NONE;
   int32_t encode_mode = ENCODE_MODE_NONE;
-  if (stricmp(".s32", pcm_file_exp) == 0) {
+  if (stricmp(".pcm", pcm_file_exp) == 0) {
+    pcm_freq = 15625;                 // fixed
+    pcm_channels = 1;
+    decode_mode = DECODE_MODE_NONE;
+    encode_mode = ENCODE_MODE_NONE;
+    adpcm_output_freq = 15625;        // fixed
+  } else if (stricmp(".s32", pcm_file_exp) == 0) {
     pcm_freq = 32000;
     pcm_channels = 2;
+    decode_mode = DECODE_MODE_RESAMPLE;
     encode_mode = ENCODE_MODE_SELF;
   } else if (stricmp(".s44", pcm_file_exp) == 0) {
     pcm_freq = 44100;
     pcm_channels = 2;
+    decode_mode = DECODE_MODE_RESAMPLE;
     encode_mode = ENCODE_MODE_SELF;
   } else if (stricmp(".s48", pcm_file_exp) == 0) {
     pcm_freq = 48000;
     pcm_channels = 2;
+    decode_mode = DECODE_MODE_RESAMPLE;
     encode_mode = ENCODE_MODE_SELF;
   } else if (stricmp(".m32", pcm_file_exp) == 0) {
     pcm_freq = 32000;
     pcm_channels = 1;
+    decode_mode = DECODE_MODE_RESAMPLE;
     encode_mode = ENCODE_MODE_SELF;
   } else if (stricmp(".m44", pcm_file_exp) == 0) {
     pcm_freq = 44100;
     pcm_channels = 1;
+    decode_mode = DECODE_MODE_RESAMPLE;
     encode_mode = ENCODE_MODE_SELF;
   } else if (stricmp(".m48", pcm_file_exp) == 0) {
     pcm_freq = 48000;
     pcm_channels = 1;
+    decode_mode = DECODE_MODE_RESAMPLE;
     encode_mode = ENCODE_MODE_SELF;
-  } else if (stricmp(".pcm", pcm_file_exp) == 0) {
-    adpcm_output_freq = 15625;    // overwrite
-    pcm_freq = 15625;
-    pcm_channels = 1;
-    encode_mode = ENCODE_MODE_NONE;
   } else if (stricmp(".mp3", pcm_file_exp) == 0) {
     pcm_freq = -1;
     pcm_channels = -1;
     decode_mode = DECODE_MODE_MP3;
-    encode_mode = ENCODE_MODE_SELF;
+    encode_mode = ENCODE_MODE_PCM8A;
   } else {
     printf("error: unknown format file (%s).\n", pcm_file_name);
     goto exit;
@@ -163,32 +169,39 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
   // enter supervisor mode
   //B_SUPER(0);
 
-  // determine PCM8 mode
-  int16_t pcm8_mode = PCM8_MODE_NONE;
-  if (pcm8a_keepchk()) {
-    pcm8_mode = PCM8_MODE_PCM8A;
+  // determine PCM8 type
+  int16_t pcm8_type = PCM8_TYPE_NONE;
+  if (pcm8pp_keepchk()) {
+    pcm8_type = PCM8_TYPE_PCM8PP;
+  } else if (pcm8a_keepchk()) {
+    pcm8_type = PCM8_TYPE_PCM8A;
   } else if (pcm8_keepchk()) {
-    pcm8_mode = PCM8_MODE_PCM8;
+    pcm8_type = PCM8_TYPE_PCM8;
   }
 
-  // can we use PCM8A for encode?
-  if (encode_mode != ENCODE_MODE_NONE && encode_with_pcm8a) {
-    if (pcm8_mode != PCM8_MODE_PCM8A) {
+  // can we use PCM8A/PCM8PP for encode?
+  if (encode_mode != ENCODE_MODE_NONE && !encode_with_self) {
+    if (pcm8_type == PCM8_TYPE_PCM8PP) {
+      encode_mode = ENCODE_MODE_PCM8PP;
+      if (decode_mode == DECODE_MODE_RESAMPLE) {
+        decode_mode = DECODE_MODE_NONE;
+      }
+    } else if (pcm8_type == PCM8_TYPE_PCM8A) {
+      encode_mode = ENCODE_MODE_PCM8A;
+    } else {
       if (decode_mode == DECODE_MODE_MP3) {
-        printf("error: PCM8A is required for MP3 playback.\n");
+        printf("error: PCM8A or PCM8PP is required for MP3 playback.\n");
         goto exit;
       } else {
-        printf("warning: PCM8A is not running. Use MP3EXP for ADPCM encoding.\n");
+        printf("\n<<warning>> PCM8A/PCM8PP is not running. Use MP3EXP for ADPCM encoding.\n");
         encode_mode = ENCODE_MODE_SELF;
         pcm_gain = 1;
       }
-    } else {
-      encode_mode = ENCODE_MODE_PCM8A;
     }
   }
 
-  // reset PCM8 / PCM8A / IOCS ADPCM
-  if (pcm8_mode != PCM8_MODE_NONE) {
+  // reset PCM8 / PCM8A / PCM8PP / IOCS ADPCM
+  if (pcm8_type != PCM8_TYPE_NONE) {
     pcm8_pause();
     pcm8_stop();
   } else {
@@ -208,14 +221,14 @@ try:
   ADPCM_HANDLE adpcm_encoder = { 0 };
   MP3_DECODE_HANDLE mp3_decoder = { 0 };
   static CHAIN_TABLE chain_tables[ MAX_CHAINS ];
-
+ 
   // init adpcm encoder
-  if (adpcm_init(&adpcm_encoder, num_chains+1) != 0) {
+  if (adpcm_init(&adpcm_encoder, num_chains+1, decode_mode == DECODE_MODE_MP3 && pcm8_type == PCM8_TYPE_PCM8A ? use_high_memory : 0) != 0) {
     printf("error: ADPCM encoder initialization error.\n");
     goto catch;
   }
 
-  // int chain tables
+  // init chain tables
   for (int16_t i = 0; i < num_chains; i++) {
     chain_tables[i].buffer = adpcm_encoder.buffers[i];
     chain_tables[i].buffer_bytes = 0;
@@ -301,7 +314,7 @@ try:
     printf("File name     : %s\n", pcm_file_name);
     printf("Data size     : %d [bytes]\n", pcm_file_size);
     printf("Data format   : %s\n", 
-      decode_mode == DECODE_MODE_MP3 ? "MP3" : 
+      decode_mode == DECODE_MODE_MP3  ? "MP3" : 
       encode_mode != ENCODE_MODE_NONE ? "16bit signed PCM (big)" : 
       "ADPCM(MSM6258V)");
 
@@ -314,13 +327,25 @@ try:
 
     // describe PCM drivers
     printf("PCM driver    : %s\n",
-      pcm8_mode == PCM8_MODE_PCM8  ? "PCM8" :
-      pcm8_mode == PCM8_MODE_PCM8A ? "PCM8A" :
+      pcm8_type == PCM8_TYPE_PCM8   ? "PCM8"   :
+      pcm8_type == PCM8_TYPE_PCM8A  ? "PCM8A"  :
+      pcm8_type == PCM8_TYPE_PCM8PP ? "PCM8PP" :
       "MP3EXP");
-    printf("ADPCM encode  : %s / %d [Hz]\n",
-      encode_mode == ENCODE_MODE_SELF  ? "MP3EXP" :
-      encode_mode == ENCODE_MODE_PCM8A ? "PCM8A" :
-      "(none)", adpcm_output_freq);
+  
+    // describe ADPCM encoding
+    if (encode_mode == ENCODE_MODE_NONE || pcm8_type == PCM8_TYPE_PCM8PP) {
+      printf("ADPCM encode  : (none)\n");
+    } else {
+      printf("ADPCM encode  : %s / %d [Hz]\n",
+        encode_mode == ENCODE_MODE_SELF   ? "MP3EXP" :
+        encode_mode == ENCODE_MODE_PCM8A  ? "PCM8A"  :
+        "(unknown)", adpcm_output_freq);
+    }
+
+    // describe MP3 decoding rate
+    if (decode_mode == DECODE_MODE_MP3) {
+      printf("MP3 frequency : %s\n", mp3_high_quality ? "full" : "half");
+    }
 
     printf("\n");
 
@@ -349,19 +374,53 @@ try:
     if (encode_mode == ENCODE_MODE_NONE) {
 
       // ADPCM through (no encoding)
-      size_t fread_len = fread(chain_tables[i].buffer, 1, adpcm_encoder.buffer_len, fp);
-      if (fread_len < adpcm_encoder.buffer_len) {
+      size_t fread_len = fread(chain_tables[i].buffer, 1, adpcm_encoder.buffer_bytes, fp);
+      if (fread_len < adpcm_encoder.buffer_bytes) {
         chain_tables[i].next = NULL;
         end_flag = 1;
       }
       chain_tables[i].buffer_bytes = fread_len;
   
+    } else if (encode_mode == ENCODE_MODE_PCM8PP) {
+
+      if (decode_mode == DECODE_MODE_MP3) {
+        // MP3 decode and PCM through (no encoding) with PCM8PP
+        size_t decoded_bytes;
+        if (mp3_decode_full(&mp3_decoder, chain_tables[i].buffer, adpcm_encoder.buffer_bytes, &decoded_bytes) != 0) {
+          printf("\rerror: mp3 decode error.\x1b[0K");
+          goto catch;
+        }
+        chain_tables[i].buffer_bytes = decoded_bytes;
+        if (decoded_bytes == 0) {
+          chain_tables[i].next = NULL;
+          end_flag = 1;
+        }
+      } else if (decode_mode == DECODE_MODE_RESAMPLE) {
+        // PCM to ADPCM encode with PCM8PP
+        size_t fread_len = fread(fread_buffer, 2, fread_buffer_len, fp);  
+        if (fread_len < fread_buffer_len) {
+          chain_tables[i].next = NULL;
+          end_flag = 1;
+        }
+        size_t resampled_len = adpcm_resample(&adpcm_encoder, chain_tables[i].buffer,
+                                              fread_buffer, fread_len, pcm_freq, pcm_channels, pcm_gain);
+        chain_tables[i].buffer_bytes = resampled_len * sizeof(int16_t);
+      } else {
+        // PCM through (no encoding) with PCM8PP
+        size_t fread_len = fread(chain_tables[i].buffer, 1, adpcm_encoder.buffer_bytes, fp);
+        if (fread_len < adpcm_encoder.buffer_bytes) {
+          chain_tables[i].next = NULL;
+          end_flag = 1;
+        }
+        chain_tables[i].buffer_bytes = fread_len;
+      }
+
     } else if (encode_mode == ENCODE_MODE_PCM8A) {
 
       if (decode_mode == DECODE_MODE_MP3) {
-        // MP3 decode and ADPCM encode
+        // MP3 decode and ADPCM encode with PCM8A
         size_t resampled_len;
-        if (mp3_decode(&mp3_decoder, chain_tables[i].buffer, adpcm_encoder.buffer_len / sizeof(int16_t), adpcm_output_freq, &resampled_len) != 0) {
+        if (mp3_decode(&mp3_decoder, chain_tables[i].buffer, adpcm_encoder.buffer_bytes / sizeof(int16_t), adpcm_output_freq, &resampled_len) != 0) {
           printf("\rerror: mp3 decode error.\x1b[0K");
           goto catch;
         }
@@ -370,8 +429,7 @@ try:
           chain_tables[i].next = NULL;
           end_flag = 1;
         }
-      } else {
-
+      } else if (decode_mode == DECODE_MODE_RESAMPLE) {
         // PCM to ADPCM encode with PCM8A
         size_t fread_len = fread(fread_buffer, 2, fread_buffer_len, fp);  
         if (fread_len < fread_buffer_len) {
@@ -381,6 +439,9 @@ try:
         size_t resampled_len = adpcm_resample(&adpcm_encoder, chain_tables[i].buffer,
                                               fread_buffer, fread_len, pcm_freq, pcm_channels, pcm_gain);
         chain_tables[i].buffer_bytes = resampled_len * sizeof(int16_t);
+      } else {
+        printf("error: unknown decode mode for PCM8A.");
+        goto catch;
       }
 
     } else {
@@ -400,14 +461,49 @@ try:
       } while (adpcm_encoder.current_buffer_id == orig_id);     // make sure a buffer is fully fulfilled
 
       chain_tables[i].buffer = adpcm_encoder.buffers[ orig_id ];
-      chain_tables[i].buffer_bytes = (chain_tables[i].next == NULL) ? adpcm_encoder.buffer_ofs : adpcm_encoder.buffer_len; 
+      chain_tables[i].buffer_bytes = (chain_tables[i].next == NULL) ? adpcm_encoder.buffer_ofs : adpcm_encoder.buffer_bytes; 
 
     }
 
   }
 
+#ifdef DEBUG
+  for (int16_t i = 0; i < num_chains; i++) {
+    printf("chain_tables[%d] self=%X,buffer=%X,buffer_bytes=%d,next=%X\n", i, &(chain_tables[i]), chain_tables[i].buffer, chain_tables[i].buffer_bytes, chain_tables[i].next);
+  }
+#endif
+
   // start playing
-  if (encode_mode == ENCODE_MODE_PCM8A) {
+  if (pcm8_type == PCM8_TYPE_PCM8PP) {
+
+    if (decode_mode == DECODE_MODE_MP3) {
+      pcm_freq = mp3_decoder.mp3_sample_rate;
+      pcm_channels = mp3_decoder.mp3_channels;
+#ifdef DEBUG
+      printf("mp3 freq=%d,channels=%d\n",pcm_freq,pcm_channels);
+#endif      
+    }
+
+    int16_t pcm8pp_volume = 0x08;
+    int16_t pcm8pp_pan = 0x03;
+    int16_t pcm8pp_freq = pcm_freq == 16000 && pcm_channels == 1 ? 0x09 :
+                          pcm_freq == 22050 && pcm_channels == 1 ? 0x0a :
+                          pcm_freq == 24000 && pcm_channels == 1 ? 0x0b :
+                          pcm_freq == 32000 && pcm_channels == 1 ? 0x0c :
+                          pcm_freq == 44100 && pcm_channels == 1 ? 0x0d :
+                          pcm_freq == 48000 && pcm_channels == 1 ? 0x0e :
+                          pcm_freq == 16000 && pcm_channels == 2 ? 0x19 :
+                          pcm_freq == 22050 && pcm_channels == 2 ? 0x1a :
+                          pcm_freq == 24000 && pcm_channels == 2 ? 0x1b :
+                          pcm_freq == 32000 && pcm_channels == 2 ? 0x1c :
+                          pcm_freq == 44100 && pcm_channels == 2 ? 0x1d :
+                          pcm_freq == 48000 && pcm_channels == 2 ? 0x1e :
+                          adpcm_output_freq < 8000  ? 0x02 :
+                          adpcm_output_freq < 11000 ? 0x03 : 0x04;
+    uint32_t pcm8pp_channel_mode = ( pcm8pp_volume << 16 ) | ( pcm8pp_freq << 8 ) | pcm8pp_pan;
+    pcm8pp_play_linked_array_chain(0, pcm8pp_channel_mode, 1, 0, &(chain_tables[0]));
+
+  } else if (pcm8_type == PCM8_TYPE_PCM8A && encode_mode == ENCODE_MODE_PCM8A) {
 
     // PCM8A encoding mode
     int16_t pcm8a_channels = 1;
@@ -425,7 +521,7 @@ try:
     uint32_t pcm8a_channel_mode = ( pcm8a_volume << 16 ) | ( pcm8a_freq << 8 ) | pcm8a_pan;
     pcm8a_play_linked_array_chain(0, pcm8a_channel_mode, &(chain_tables[0]));
 
-  } else if (pcm8_mode != PCM8_MODE_NONE) {
+  } else if (pcm8_type == PCM8_TYPE_PCM8 || pcm8_type == PCM8_TYPE_PCM8A) {
 
     // disable PCM8 polyphonic mode
     pcm8_set_polyphonic_mode(0);    
@@ -451,6 +547,10 @@ try:
   for (int32_t t0 = ONTIME(); ONTIME() < t0 + 30;) {}
 
   int16_t current_chain = 0;
+  int32_t pcm8pp_block_counter = 0;
+  if (pcm8_type == PCM8_TYPE_PCM8PP) {
+    pcm8pp_block_counter = pcm8pp_get_block_counter(0);
+  }
 
   for (;;) {
    
@@ -465,7 +565,22 @@ try:
     }
  
     // exit if not playing
-    if (encode_mode == ENCODE_MODE_PCM8A) {
+    if (encode_mode == ENCODE_MODE_PCM8PP) {
+      if (pcm8pp_get_data_length(0) == 0) {
+        // dummy wait to make sure it (500 msec) because pcm8pp may return 0 in case 48000Hz mode
+        for (int32_t t0 = ONTIME(); ONTIME() < t0 + 50;) {}
+        if (pcm8pp_get_data_length(0) == 0) {
+          if (end_flag) { 
+            printf("\rfinished.\x1b[0K");
+            rc = 0;
+          } else {
+            printf("\rerror: buffer underrun detected.\x1b[0K");
+            rc = 1;
+          }
+          break;
+        }
+      }
+    } else if (encode_mode == ENCODE_MODE_PCM8A) {
       if (pcm8a_get_data_length(0) == 0) {
         if (end_flag) { 
           printf("\rfinished.\x1b[0K");
@@ -493,7 +608,13 @@ try:
     CHAIN_TABLE* cta = &(chain_tables[ current_chain ]);
     CHAIN_TABLE* ctb = &(chain_tables[ (current_chain - 1 + num_chains) % num_chains ]);
     int16_t buffer_flip = 0;
-    if (encode_mode == ENCODE_MODE_PCM8A) {
+    if (pcm8_type == PCM8_TYPE_PCM8PP) {
+      int32_t bc = pcm8pp_get_block_counter(0);
+      if (bc != pcm8pp_block_counter) {
+        buffer_flip = 1;
+        pcm8pp_block_counter = bc;
+      }
+    } else if (pcm8_type == PCM8_TYPE_PCM8A && encode_mode == ENCODE_MODE_PCM8A) {
       void* cur_pcm8a_addr = pcm8a_get_access_address(0);
       if (cur_pcm8a_addr < cta->buffer || cur_pcm8a_addr >= cta->buffer + cta->buffer_bytes) {
         buffer_flip = 1;
@@ -528,12 +649,48 @@ try:
       if (encode_mode == ENCODE_MODE_NONE) {
 
         // ADPCM through (no encoding)
-        size_t fread_len = fread(cta->buffer, 1, adpcm_encoder.buffer_len, fp);
-        if (fread_len < adpcm_encoder.buffer_len) {
+        size_t fread_len = fread(cta->buffer, 1, adpcm_encoder.buffer_bytes, fp);
+        if (fread_len < adpcm_encoder.buffer_bytes) {
           cta->next = NULL;
           end_flag = 1;
         }
         cta->buffer_bytes = fread_len;        
+
+      } else if (encode_mode == ENCODE_MODE_PCM8PP) {
+
+        if (decode_mode == DECODE_MODE_MP3) {
+
+          // MP3 decode and PCM through (no encoding) with PCM8PP
+          size_t decoded_bytes;
+          if (mp3_decode_full(&mp3_decoder, cta->buffer, adpcm_encoder.buffer_bytes, &decoded_bytes) != 0) {
+            printf("\rerror: mp3 decode error.\x1b[0K");
+            goto catch;
+          }
+          cta->buffer_bytes = decoded_bytes;
+          if (decoded_bytes == 0) {
+            cta->next = NULL;
+            end_flag = 1;
+          }
+
+        } else if (decode_mode == DECODE_MODE_RESAMPLE) {
+          // ADPCM encoding with PCM8PP
+          size_t fread_len = fread(fread_buffer, 2, fread_buffer_len, fp);  
+          if (fread_len < fread_buffer_len) {
+            cta->next = NULL;
+            end_flag = 1;
+          }
+          size_t resampled_len = adpcm_resample(&adpcm_encoder, cta->buffer, 
+                                                fread_buffer, fread_len, pcm_freq, pcm_channels, pcm_gain);
+          cta->buffer_bytes = resampled_len * sizeof(int16_t);
+        } else {
+          // PCM through (no encoding) with PCM8PP
+          size_t fread_len = fread(cta->buffer, 1, adpcm_encoder.buffer_bytes, fp);
+          if (fread_len < adpcm_encoder.buffer_bytes) {
+            cta->next = NULL;
+            end_flag = 1;
+          }
+          cta->buffer_bytes = fread_len;
+        }
 
       } else if (encode_mode == ENCODE_MODE_PCM8A) {
 
@@ -541,7 +698,7 @@ try:
 
           // MP3 decode and ADPCM encode
           size_t resampled_len;
-          if (mp3_decode(&mp3_decoder, cta->buffer, adpcm_encoder.buffer_len / sizeof(int16_t), adpcm_output_freq, &resampled_len) != 0) {
+          if (mp3_decode(&mp3_decoder, cta->buffer, adpcm_encoder.buffer_bytes / sizeof(int16_t), adpcm_output_freq, &resampled_len) != 0) {
             printf("\rerror: mp3 decode error.\x1b[0K");
             goto catch;
           }
@@ -561,7 +718,7 @@ try:
           }
 
           size_t resampled_len = adpcm_resample(&adpcm_encoder, cta->buffer, 
-                                              fread_buffer, fread_len, pcm_freq, pcm_channels, pcm_gain);
+                                                fread_buffer, fread_len, pcm_freq, pcm_channels, pcm_gain);
           cta->buffer_bytes = resampled_len * sizeof(int16_t);
         }
 
@@ -582,7 +739,7 @@ try:
         } while (adpcm_encoder.current_buffer_id == orig_id);
 
         cta->buffer = adpcm_encoder.buffers[ orig_id ];
-        cta->buffer_bytes = (cta->next == NULL) ? adpcm_encoder.buffer_ofs : adpcm_encoder.buffer_len; 
+        cta->buffer_bytes = (cta->next == NULL) ? adpcm_encoder.buffer_ofs : adpcm_encoder.buffer_bytes; 
 
       }
 
@@ -592,31 +749,16 @@ try:
       // increment focus chain
       current_chain = ( current_chain + 1 ) % num_chains;
 
-#ifdef OBSOLETE_BUFFER_UNDERRUN_CHECK
-      // buffer underrun check
-      if (end_flag == 0) {    // if already in the last chain, continue risk play
-        if (encode_mode == ENCODE_MODE_PCM8A) {
-          void* pcm8a_addr = pcm8a_get_access_address(0);
-          if (pcm8a_addr >= cta->buffer && pcm8a_addr < cta->buffer + cta->buffer_bytes) {
-            printf("\rerror: buffer underrun during playback.\n");
-            goto catch;            
-          }
-        } else {
-          void* cur_dmac_bar2 = (void*)B_LPEEK((uint32_t*)REG_DMAC_CH3_BAR);     // = next chain table pointer
-          if (cur_dmac_bar2 == cta->next) {
-            printf("\rerror: buffer underrun during playback.\n");
-            goto catch;
-          }
-        }
-      }
-#endif
     }
 
   }
 
 catch:
   // reset ADPCM
-  if (encode_mode == ENCODE_MODE_PCM8A) {
+  if (pcm8_type == PCM8_TYPE_PCM8PP && encode_mode == ENCODE_MODE_PCM8PP) {
+    pcm8pp_pause();
+    pcm8pp_stop();
+  } else if (pcm8_type == PCM8_TYPE_PCM8A && encode_mode == ENCODE_MODE_PCM8A) {
     pcm8a_pause();
     pcm8a_stop();
   } else {
@@ -646,7 +788,7 @@ catch:
   mp3_close(&mp3_decoder);
 
   // enable pcm8 polyphonic mode
-  if (pcm8_mode != PCM8_MODE_NONE) {
+  if (pcm8_type != PCM8_TYPE_NONE) {
     if (pcm8_set_polyphonic_mode(-1) == 0) {
       pcm8_set_polyphonic_mode(1);
     }

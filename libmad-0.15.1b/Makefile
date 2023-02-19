@@ -29,7 +29,8 @@ INCLUDE_FLAGS = -I${XDEV68K_DIR}/include/xc -I${XDEV68K_DIR}/include/xdev68k
 # コンパイルフラグ
 COMMON_FLAGS = -m68000 -O2 $(INCLUDE_FLAGS) -z-stack=32768
 CFLAGS = $(COMMON_FLAGS) -Wno-builtin-declaration-mismatch -fcall-used-d2 -fcall-used-a2 \
-    -fexec-charset=cp932 -fverbose-asm -fno-defer-pop -DFPM_DEFAULT -D_TIME_T_DECLARED -D_CLOCK_T_DECLARED -Dwint_t=int
+    -fexec-charset=cp932 -fverbose-asm -fno-defer-pop -D_TIME_T_DECLARED -D_CLOCK_T_DECLARED -Dwint_t=int \
+		-DFPM_DEFAULT -DOPT_SPEED
 
 # *.c ソースファイル
 C_SRCS = bit.c decoder.c fixed.c frame.c huffman.c layer3.c layer12.c stream.c synth.c timer.c version.c
@@ -56,7 +57,7 @@ OBJS =	$(addprefix $(INTERMEDIATE_DIR)/,$(patsubst %.c,%.o,$(C_SRCS))) \
 	$(addprefix $(INTERMEDIATE_DIR)/,$(patsubst %.s,%.o,$(ASM_SRCS)))
 
 # HLK に入力するリンクリスト
-HLK_LINK_LIST = _lk_list.tmp
+HLK_LINK_LIST = $(INTERMEDIATE_DIR)/_lk_list.tmp
 
 # デフォルトのターゲット
 all : ${INTERMEDIATE_DIR}/$(TARGET_FILE)
