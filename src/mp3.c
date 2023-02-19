@@ -46,8 +46,8 @@ int32_t mp3_init(MP3_DECODE_HANDLE* decode, void* mp3_data, size_t mp3_data_len,
   decode->mp3_data = mp3_data;
   decode->mp3_data_len = mp3_data_len;
 //  decode->mp3_bit_rate = -1;
-//  decode->mp3_sample_rate = -1;
-//  decode->mp3_num_channels = -1;
+  decode->mp3_sample_rate = -1;
+  decode->mp3_channels = -1;
   decode->resample_counter = 0;
 
   decode->mp3_frame_options = mp3_high_quality ? 0 : MAD_OPTION_HALFSAMPLERATE | MAD_OPTION_IGNORECRC;
@@ -106,12 +106,12 @@ int32_t mp3_decode(MP3_DECODE_HANDLE* decode, int16_t* resample_buffer, size_t r
         }
       }
 
-//      if (decode->mp3_bit_rate < 0) {
-//        MAD_HEADER* h = &(decode->mad_frame.header);
+      if (decode->mp3_sample_rate < 0) {
+        MAD_HEADER* h = &(decode->mad_frame.header);
 //        decode->mp3_bit_rate = h->bitrate;
-//        decode->mp3_sample_rate = h->samplerate;
-//        decode->mp3_num_channels = h->mode == MAD_MODE_SINGLE_CHANNEL ? 1 : 2;
-//      }
+        decode->mp3_sample_rate = h->samplerate;
+        decode->mp3_channels = h->mode == MAD_MODE_SINGLE_CHANNEL ? 1 : 2;
+      }
 
       decode->mad_frame.options = decode->mp3_frame_options;
 
@@ -174,6 +174,105 @@ exit:
 
   // push resampled count
   *resampled_len = resample_ofs;
+
+  return rc;
+}
+
+//
+//  decode MP3 stream (full for pcm8pp)
+//
+int32_t mp3_decode_full(MP3_DECODE_HANDLE* decode, int16_t* decode_buffer, size_t decode_buffer_bytes, size_t* decoded_bytes) {
+
+  // default return code
+  int32_t rc = -1;
+
+  // decode counter
+  int32_t decode_ofs = 0;
+
+  for (;;) {
+    
+    if (decode->current_mad_pcm == NULL) {
+
+      int16_t result = mad_frame_decode(&(decode->mad_frame), &(decode->mad_stream));
+      if (result == -1) {
+        if (decode->mad_stream.error == MAD_ERROR_BUFLEN) {
+          // MP3 EOF
+          break;
+        } else if (MAD_RECOVERABLE(decode->mad_stream.error)) {
+          continue;
+        } else {
+          printf("error: %s\n", mad_stream_errorstr(&(decode->mad_stream)));
+          goto exit;
+        }
+      }
+
+      decode->mad_frame.options = decode->mp3_frame_options;
+
+      mad_synth_frame(&(decode->mad_synth), &(decode->mad_frame));
+      mad_timer_add(&(decode->mad_timer), decode->mad_frame.header.duration);
+
+      decode->current_mad_pcm = &(decode->mad_synth.pcm);
+
+      if (decode->mp3_sample_rate < 0) {
+        decode->mp3_sample_rate = decode->current_mad_pcm->samplerate;
+        decode->mp3_channels = decode->current_mad_pcm->channels;
+      }
+
+    } 
+
+    MAD_PCM* pcm = decode->current_mad_pcm;
+    if (decode_ofs * sizeof(int16_t) + ( pcm->length * 2 * pcm->channels ) > decode_buffer_bytes) {
+      // no more buffer space to write
+      break;
+    }
+
+    if (pcm->channels == 2) {
+
+      for (int32_t i = 0; i < pcm->length; i++) {
+
+        // down sampling
+//        decode->resample_counter += resample_freq;
+//        if (decode->resample_counter < pcm->samplerate) {
+//          continue;
+//        }
+
+//        decode->resample_counter -= pcm->samplerate;
+    
+        // stereo data
+        decode_buffer[ decode_ofs++ ] = scale_16bit(pcm->samples[0][i]);
+        decode_buffer[ decode_ofs++ ] = scale_16bit(pcm->samples[1][i]);
+
+      }
+
+    } else {
+
+      for (int32_t i = 0; i < pcm->length; i++) {
+
+        // down sampling
+//        decode->resample_counter += resample_freq;
+//        if (decode->resample_counter < pcm->samplerate) {
+//          continue;
+//        }
+
+//        decode->resample_counter -= pcm->samplerate;
+    
+        decode_buffer[ decode_ofs++ ] = scale_16bit(pcm->samples[0][i]);
+
+      }
+
+    }
+
+    decode->current_mad_pcm = NULL;
+
+  }
+
+  // success
+  rc = 0;
+
+exit:
+
+  // push resampled count
+  *decoded_bytes = decode_ofs * sizeof(int16_t);
 
   return rc;
 }

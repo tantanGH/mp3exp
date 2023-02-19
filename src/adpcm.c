@@ -92,7 +92,7 @@ static uint8_t encode(int16_t current_data, int16_t last_estimate, int16_t* step
 //
 //  initialize adpcm handle
 //
-int32_t adpcm_init(ADPCM_HANDLE* adpcm, int16_t buffer_count) {
+int32_t adpcm_init(ADPCM_HANDLE* adpcm, int16_t buffer_count, int16_t use_high_memory) {
 
   int32_t rc = -1;
 
@@ -101,13 +101,14 @@ int32_t adpcm_init(ADPCM_HANDLE* adpcm, int16_t buffer_count) {
   adpcm->num_samples = 0;
   adpcm->resample_counter = 0;
 
+  adpcm->use_high_memory = use_high_memory;
   adpcm->current_buffer_id = 0;
   adpcm->buffer_count = buffer_count;
-  adpcm->buffer_len = ADPCM_BUFFER_SIZE;
+  adpcm->buffer_bytes = ADPCM_BUFFER_SIZE;
   adpcm->buffer_ofs = 0;
 
   for (int16_t i = 0; i < adpcm->buffer_count; i++) {
-    adpcm->buffers[i] = malloc_himem(adpcm->buffer_len, 0);     // use main memory
+    adpcm->buffers[i] = malloc_himem(adpcm->buffer_bytes, adpcm->use_high_memory);
     if (adpcm->buffers[i] == NULL) {
       goto exit;
     }
@@ -127,7 +128,7 @@ void adpcm_close(ADPCM_HANDLE* adpcm) {
   // reclaim buffers
   for (int16_t i = 0; i < adpcm->buffer_count; i++) {
     if (adpcm->buffers[i] != NULL) {
-      free_himem(adpcm->buffers[i], 0);
+      free_himem(adpcm->buffers[i], adpcm->use_high_memory);
       adpcm->buffers[i] = NULL;
     }
   }
@@ -182,7 +183,7 @@ int32_t adpcm_encode(ADPCM_HANDLE* adpcm, void* pcm_buffer, size_t pcm_buffer_le
     adpcm->last_estimate = new_estimate;
 
     // current buffer is full?
-    if (adpcm->buffer_ofs >= adpcm->buffer_len) {
+    if (adpcm->buffer_ofs >= adpcm->buffer_bytes) {
       int16_t orig = adpcm->current_buffer_id;
       adpcm->current_buffer_id = (orig + 1) % adpcm->buffer_count;
       adpcm->buffer_ofs = 0;
