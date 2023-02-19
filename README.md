@@ -9,8 +9,8 @@ ADPCM/PCM/MP3 player for X680x0/Human68k
 
 出力デバイスは内蔵ADPCMまたはMercury-Unit(V3.5以上)になります。組み込むPCM8ドライバによって決まります。
 
-- 出力先が内蔵ADPCMの時はすべての形式のファイルがリアルタイムに内蔵ADPCM(15.6kHz,mono)の形式に変換されます。
-- 出力先がMercury-Unitの時はADPCM形式も含めたすべての形式のファイルがMercury-Unitから出力されます。
+- 出力先が内蔵ADPCMの時はすべての形式がリアルタイムに内蔵ADPCM(15.6kHz,mono)の音声に変換されます。
+- 出力先がMercury-Unitの時はADPCM形式も含めたすべての形式の音声がMercury-Unitから出力されます。
 
 注意：MP3ファイルの再生はかなりのMPUパワーを必要とします。事実上エミュレータ向けのオマケです。
 
