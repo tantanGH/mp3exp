@@ -20,6 +20,8 @@ ADPCM/PCM/MP3 player for X680x0/Human68k
 
 の方を使ってください。
 
+注意：当方の環境だと.S48/.M48をpcm8pp.xでMercury-Unitから再生しようとするとすぐに終了してしまいます。(pcm8ppがデータ終了を返してくる) 現時点で原因不明につき非対応とさせてください。
+
 ---
 
 ### Install
