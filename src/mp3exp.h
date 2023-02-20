@@ -1,7 +1,7 @@
 #ifndef __H_MP3EXP__
 #define __H_MP3EXP__
 
-#define VERSION "0.5.0 (2023/02/19)"
+#define VERSION "0.6.0 (2023/02/21)"
 
 #define REG_DMAC_CH3_BAR (0xE840C0 + 0x1C)
 
@@ -20,6 +20,8 @@
 #define ENCODE_MODE_PCM8PP (3)
 
 #define MAX_CHAINS (32)
+
+#define FREAD_STAGING_BUFFER_BYTES (65536*4)
 
 typedef struct {
     void* buffer;
