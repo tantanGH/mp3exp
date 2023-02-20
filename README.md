@@ -7,7 +7,9 @@ ADPCM/PCM/MP3 player for X680x0/Human68k
  - 16bit符号付き big endian raw PCM (.S32/.S44/.S48/.M32/.M44/.M48)
  - MP3 (.MP3)
 
-MP3のアルバムアート表示(JPG/PNG)に対応しています。
+MP3のアルバムアート表示(JPEG/PNG)に対応しています。
+
+<img src='images/mp3exp1.png' width='800'/>
 
 出力デバイスは内蔵ADPCMまたはMercury-Unit(V3.5以上)になります。組み込むPCM8ドライバによって決まります。
 
