@@ -129,7 +129,7 @@ PNGデコードのために zlib をx68k向けにコンパイルしたものを�
 * XM6 TypeG thanks to PI.さん / GIMONSさん
 * PCM8A.X thanks to phillyさん
 * PCM8PP.X thanks to たにぃさん
-* TS16DRVp.X thanks to M.Kamadaさん / はぅさん / みゆ (miyu rose) さん
+* TS16DRVp.X thanks to M.Kamadaさん / はぅさん / みゆ🌹ฅ^•ω•^ฅ さん
 
 ---
 
