@@ -12,6 +12,7 @@
 #include "adpcm.h"
 #include "mp3.h"
 #include "mp3exp.h"
+#include "crtc.h"
 
 //#define DEBUG
 
@@ -39,9 +40,10 @@ static void show_help_message() {
   printf("options:\n");
   printf("     -a    ... use MP3EXP for ADPCM encoding\n");
   printf("     -b<n> ... buffer size [x 64KB] (2-32,default:4)\n");
-  printf("     -u    ... use 060turbo high memory for buffering\n");
+  printf("     -u    ... use 060turbo/ts-6be16 high memory for buffering\n");
   printf("     -l[n] ... loop count (none:infinite, default:1)\n");
-  printf("     -q    ... mp3 high quality mode\n");
+  printf("     -q[n] ... mp3 quality (0:high, 1:normal, default:1)\n");
+  printf("     -t[n] ... mp3 album art display brightness (1-100, default:off)\n");
   printf("     -h    ... show help message\n");
 }
 
@@ -61,7 +63,8 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
   int16_t loop_count = 1;
   int16_t use_high_memory = 0;
   int32_t adpcm_output_freq = 15625;
-  int16_t mp3_high_quality = 0;
+  int16_t mp3_quality = 1;
+  int16_t mp3_pic_brightness = 0;
   for (int16_t i = 1; i < argc; i++) {
     if (argv[i][0] == '-' && strlen(argv[i]) >= 2) {
       if (argv[i][1] == 'a') {
@@ -77,7 +80,17 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
       } else if (argv[i][1] == 'u') {
         use_high_memory = 1;
       } else if (argv[i][1] == 'q') {
-        mp3_high_quality = 1;
+        mp3_quality = atoi(argv[i]+2);
+        if (mp3_quality < 0 || mp3_quality > 1 || strlen(argv[i]) < 3) {
+          show_help_message();
+          goto exit;
+        }
+      } else if (argv[i][1] == 't') {
+        mp3_pic_brightness = atoi(argv[i]+2);
+        if (mp3_pic_brightness < 0 || mp3_pic_brightness > 100 || strlen(argv[i]) < 3) {
+          show_help_message();
+          goto exit;
+        }
       } else if (argv[i][1] == 'o') {
         int16_t out_freq = atoi(argv[i]+2);
         if (out_freq == 0) {
@@ -166,8 +179,11 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
   uint32_t abort_vector1 = INTVCS(0xFFF1, (int8_t*)abort_application);
   uint32_t abort_vector2 = INTVCS(0xFFF2, (int8_t*)abort_application);  
 
-  // enter supervisor mode
-  //B_SUPER(0);
+  // enter supervisor mode and init crtc if album art is required
+  if (mp3_pic_brightness > 0) {
+    B_SUPER(0);
+    crtc_set_extra_mode(0);
+  }
 
   // determine PCM8 type
   int16_t pcm8_type = PCM8_TYPE_NONE;
@@ -185,6 +201,10 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
       encode_mode = ENCODE_MODE_PCM8PP;
       if (decode_mode == DECODE_MODE_RESAMPLE) {
         decode_mode = DECODE_MODE_NONE;
+      }
+      if (decode_mode == DECODE_MODE_MP3 && mp3_quality == 2) {
+        printf("error: MP3 with PCM8PP does not support low quality mode.\n");
+        goto exit;
       }
     } else if (pcm8_type == PCM8_TYPE_PCM8A) {
       encode_mode = ENCODE_MODE_PCM8A;
@@ -213,6 +233,7 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
 loop:
   // file read buffer and resample buffer
   void* fread_buffer = NULL;
+  void* fread_staging_buffer = NULL;
   void* resample_buffer = NULL;
   FILE* fp = NULL;
 
@@ -226,6 +247,12 @@ try:
   if (adpcm_init(&adpcm_encoder, num_chains+1, decode_mode == DECODE_MODE_MP3 && pcm8_type == PCM8_TYPE_PCM8A ? use_high_memory : 0) != 0) {
     printf("error: ADPCM encoder initialization error.\n");
     goto catch;
+  }
+
+  // init mp3 decoder
+  if (mp3_init(&mp3_decoder) != 0) {
+    printf("error: MP3 decoder initialization error.\n");
+    goto catch;    
   }
 
   // init chain tables
@@ -245,37 +272,35 @@ try:
   // read the first 10 bytes of the MP3 file
   size_t skip_offset = 0;
   if (decode_mode == DECODE_MODE_MP3) {
-
-    uint8_t mp3_header[10];
-    size_t ret = fread(mp3_header, 1, 10, fp);
-    if (ret != 10) {
-      printf("error: cannot read mp3 file.\n");
+    printf("\rparsing ID3v2 tag and album art...");
+    int32_t ofs = mp3_parse_tags(&mp3_decoder, mp3_pic_brightness, fp);
+    if (ofs < 0) {
+      printf("\rerror: ID3v2 tag parse error.\x1b[0K\n");
       goto catch;
     }
-
-    // check if the MP3 file has an ID3v2 tag
-    if (mp3_header[0] == 'I' && mp3_header[1] == 'D' && mp3_header[2] == '3') {
-      // Extract the tag size
-      uint32_t tag_size = ((mp3_header[6] & 0x7f) << 21) | ((mp3_header[7] & 0x7f) << 14) |
-                          ((mp3_header[8] & 0x7f) << 7) | (mp3_header[9] & 0x7f);
-
-      skip_offset = tag_size + 10;
-    }
+    skip_offset = ofs;
+    //if (mp3_decoder.mp3_pic && mp3_decoder.mp3_pic_data != NULL) {
+    //  crtc_set_extra_mode(0);
+    //  crtc_set_brightness(mp3_pic_brightness);
+    //  crtc_draw_bitmap(mp3_decoder.mp3_pic_data, mp3_decoder.mp3_pic_width, mp3_decoder.mp3_pic_height, 3);
+    //}
+    //printf("skip offset = %d\n",ofs);
   }
 
   // check file size
   fseek(fp, 0, SEEK_END);
   uint32_t pcm_file_size = ftell(fp) - skip_offset;
   fseek(fp, skip_offset, SEEK_SET);
+  //printf("pcm_file_size = %d\n", pcm_file_size);
 
   // allocate file read buffer
   //   mp3 ... full read
   //   pcm ... incremental (max 2 sec)
-  size_t fread_buffer_len = ( decode_mode == DECODE_MODE_MP3 ) ? pcm_file_size : pcm_freq * pcm_channels * 2;
+  size_t fread_buffer_len = ( decode_mode == DECODE_MODE_MP3 ) ? 2 + pcm_file_size / sizeof(int16_t) : pcm_freq * pcm_channels * 2;
   if (encode_mode != ENCODE_MODE_NONE) {
-    fread_buffer = malloc_himem(fread_buffer_len * sizeof(int16_t), use_high_memory);
+    fread_buffer = malloc_himem(fread_buffer_len * sizeof(int16_t), decode_mode == DECODE_MODE_MP3 ? use_high_memory : 0);
     if (fread_buffer == NULL) {
-      printf("error: file read buffer memory allocation error.\n");
+      printf("\rerror: file read buffer memory allocation error.\n");
       goto catch;
     }
   }
@@ -285,25 +310,35 @@ try:
   if (encode_mode != ENCODE_MODE_NONE) {
     resample_buffer = malloc_himem(resample_buffer_len * sizeof(int16_t), use_high_memory);
     if (resample_buffer == NULL) {
-      printf("error: resampling buffer memory allocation error.\n");
+      printf("\rerror: resampling buffer memory allocation error.\n");
       goto catch;
     }
   }
 
   // init mp3 decoder if needed
   if (decode_mode == DECODE_MODE_MP3) {
-    // full read
+    // full read with staging buffer
+    printf("\rloading MP3...\x1b[0K");
+    fread_staging_buffer = malloc_himem(FREAD_STAGING_BUFFER_BYTES, 0);
+    if (fread_staging_buffer == NULL) {
+      printf("\rerror: file read staging buffer memory allocation error.\n");
+      goto catch;
+    }    
     size_t read_len = 0; 
     do {
-      size_t len = fread(fread_buffer + read_len, 1, fread_buffer_len - read_len, fp);
+      size_t len = fread(fread_staging_buffer, 1, FREAD_STAGING_BUFFER_BYTES, fp);
+      memcpy(fread_buffer + read_len, fread_staging_buffer, len);
       read_len += len;
-    } while (read_len < fread_buffer_len);
+    } while (read_len < pcm_file_size);
     fclose(fp);
     fp = NULL;
-    if (mp3_init(&mp3_decoder, fread_buffer, fread_buffer_len, mp3_high_quality) != 0) {
-      printf("error: MP3 decoder initialization error.\n");
+    free_himem(fread_staging_buffer, 0);
+    fread_staging_buffer = NULL;
+    if (mp3_decode_setup(&mp3_decoder, fread_buffer, pcm_file_size, mp3_quality) != 0) {
+      printf("\rerror: MP3 decoder initialization error.\n");
       goto catch;
     }
+    printf("\r\x1b[0K");
   }
 
   // describe PCM attributes
@@ -334,7 +369,7 @@ try:
   
     // describe ADPCM encoding
     if (encode_mode == ENCODE_MODE_NONE || pcm8_type == PCM8_TYPE_PCM8PP) {
-      printf("ADPCM encode  : (none)\n");
+      //printf("ADPCM encode  : (none)\n");
     } else {
       printf("ADPCM encode  : %s / %d [Hz]\n",
         encode_mode == ENCODE_MODE_SELF   ? "MP3EXP" :
@@ -344,7 +379,15 @@ try:
 
     // describe MP3 decoding rate
     if (decode_mode == DECODE_MODE_MP3) {
-      printf("MP3 frequency : %s\n", mp3_high_quality ? "full" : "half");
+      printf("MP3 quality   : %s\n",
+        mp3_quality == 2 ? "low" :
+        mp3_quality == 1 ? "normal" : "high");
+      if (mp3_decoder.mp3_title != NULL) {
+        printf("MP3 title     : %s / %s / %s\n",
+          mp3_decoder.mp3_title,
+          mp3_decoder.mp3_artist != NULL ? mp3_decoder.mp3_artist : (uint8_t*)"",
+          mp3_decoder.mp3_album != NULL ? mp3_decoder.mp3_album : (uint8_t*)"");
+      }
     }
 
     printf("\n");
@@ -776,8 +819,12 @@ catch:
     free_himem(resample_buffer, use_high_memory);
     resample_buffer = NULL;
   }
+  if (fread_staging_buffer != NULL) {
+    free_himem(fread_staging_buffer, 0);
+    fread_staging_buffer = NULL;
+  }
   if (fread_buffer != NULL) {
-    free_himem(fread_buffer, use_high_memory);
+    free_himem(fread_buffer, decode_mode == DECODE_MODE_MP3 ? use_high_memory : 0);
     fread_buffer = NULL;
   }
 

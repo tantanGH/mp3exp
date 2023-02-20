@@ -826,6 +826,144 @@ void synth_half(struct mad_synth *synth, struct mad_frame const *frame,
 }
 
 /*
+ * NAME:	synth->quarter()
+ * DESCRIPTION:	perform half frequency PCM synthesis
+ */
+static
+void synth_quarter(struct mad_synth *synth, struct mad_frame const *frame,
+		unsigned int nch, unsigned int ns)
+{
+  unsigned int phase, ch, s, sb, pe, po;
+  mad_fixed_t *pcm1, *pcm2, (*filter)[2][2][16][8];
+  mad_fixed_t const (*sbsample)[36][32];
+  register mad_fixed_t (*fe)[8], (*fx)[8], (*fo)[8];
+  register mad_fixed_t const (*Dptr)[32], *ptr;
+  register mad_fixed64hi_t hi;
+  register mad_fixed64lo_t lo;
+
+  for (ch = 0; ch < nch; ++ch) {
+    sbsample = &frame->sbsample[ch];
+    filter   = &synth->filter[ch];
+    phase    = synth->phase;
+    pcm1     = synth->pcm.samples[ch];
+
+    for (s = 0; s < ns; ++s) {
+      dct32((*sbsample)[s], phase >> 1,
+	    (*filter)[0][phase & 1], (*filter)[1][phase & 1]);
+
+      pe = phase & ~1;
+      po = ((phase - 1) & 0xf) | 1;
+
+      /* calculate 16 samples */
+
+      fe = &(*filter)[0][ phase & 1][0];
+      fx = &(*filter)[0][~phase & 1][0];
+      fo = &(*filter)[1][~phase & 1][0];
+
+      Dptr = &D[0];
+
+      ptr = *Dptr + po;
+      ML0(hi, lo, (*fx)[0], ptr[ 0]);
+      MLA(hi, lo, (*fx)[1], ptr[14]);
+      MLA(hi, lo, (*fx)[2], ptr[12]);
+      MLA(hi, lo, (*fx)[3], ptr[10]);
+      MLA(hi, lo, (*fx)[4], ptr[ 8]);
+      MLA(hi, lo, (*fx)[5], ptr[ 6]);
+      MLA(hi, lo, (*fx)[6], ptr[ 4]);
+      MLA(hi, lo, (*fx)[7], ptr[ 2]);
+      MLN(hi, lo);
+
+      ptr = *Dptr + pe;
+      MLA(hi, lo, (*fe)[0], ptr[ 0]);
+      MLA(hi, lo, (*fe)[1], ptr[14]);
+      MLA(hi, lo, (*fe)[2], ptr[12]);
+      MLA(hi, lo, (*fe)[3], ptr[10]);
+      MLA(hi, lo, (*fe)[4], ptr[ 8]);
+      MLA(hi, lo, (*fe)[5], ptr[ 6]);
+      MLA(hi, lo, (*fe)[6], ptr[ 4]);
+      MLA(hi, lo, (*fe)[7], ptr[ 2]);
+
+      *pcm1++ = SHIFT(MLZ(hi, lo));
+
+      pcm2 = pcm1 + 14;
+
+      for (sb = 1; sb < 16; ++sb) {
+	++fe;
+	++Dptr;
+
+	/* D[32 - sb][i] == -D[sb][31 - i] */
+
+	if (!(sb & 3)) {
+	  ptr = *Dptr + po;
+	  ML0(hi, lo, (*fo)[0], ptr[ 0]);
+	  MLA(hi, lo, (*fo)[1], ptr[14]);
+	  MLA(hi, lo, (*fo)[2], ptr[12]);
+	  MLA(hi, lo, (*fo)[3], ptr[10]);
+	  MLA(hi, lo, (*fo)[4], ptr[ 8]);
+	  MLA(hi, lo, (*fo)[5], ptr[ 6]);
+	  MLA(hi, lo, (*fo)[6], ptr[ 4]);
+	  MLA(hi, lo, (*fo)[7], ptr[ 2]);
+	  MLN(hi, lo);
+
+	  ptr = *Dptr + pe;
+	  MLA(hi, lo, (*fe)[7], ptr[ 2]);
+	  MLA(hi, lo, (*fe)[6], ptr[ 4]);
+	  MLA(hi, lo, (*fe)[5], ptr[ 6]);
+	  MLA(hi, lo, (*fe)[4], ptr[ 8]);
+	  MLA(hi, lo, (*fe)[3], ptr[10]);
+	  MLA(hi, lo, (*fe)[2], ptr[12]);
+	  MLA(hi, lo, (*fe)[1], ptr[14]);
+	  MLA(hi, lo, (*fe)[0], ptr[ 0]);
+
+	  *pcm1++ = SHIFT(MLZ(hi, lo));
+
+	  ptr = *Dptr - po;
+	  ML0(hi, lo, (*fo)[7], ptr[31 -  2]);
+	  MLA(hi, lo, (*fo)[6], ptr[31 -  4]);
+	  MLA(hi, lo, (*fo)[5], ptr[31 -  6]);
+	  MLA(hi, lo, (*fo)[4], ptr[31 -  8]);
+	  MLA(hi, lo, (*fo)[3], ptr[31 - 10]);
+	  MLA(hi, lo, (*fo)[2], ptr[31 - 12]);
+	  MLA(hi, lo, (*fo)[1], ptr[31 - 14]);
+	  MLA(hi, lo, (*fo)[0], ptr[31 - 16]);
+
+	  ptr = *Dptr - pe;
+	  MLA(hi, lo, (*fe)[0], ptr[31 - 16]);
+	  MLA(hi, lo, (*fe)[1], ptr[31 - 14]);
+	  MLA(hi, lo, (*fe)[2], ptr[31 - 12]);
+	  MLA(hi, lo, (*fe)[3], ptr[31 - 10]);
+	  MLA(hi, lo, (*fe)[4], ptr[31 -  8]);
+	  MLA(hi, lo, (*fe)[5], ptr[31 -  6]);
+	  MLA(hi, lo, (*fe)[6], ptr[31 -  4]);
+	  MLA(hi, lo, (*fe)[7], ptr[31 -  2]);
+
+	  *pcm2-- = SHIFT(MLZ(hi, lo));
+	}
+
+	++fo;
+      }
+
+      ++Dptr;
+
+      ptr = *Dptr + po;
+      ML0(hi, lo, (*fo)[0], ptr[ 0]);
+      MLA(hi, lo, (*fo)[1], ptr[14]);
+      MLA(hi, lo, (*fo)[2], ptr[12]);
+      MLA(hi, lo, (*fo)[3], ptr[10]);
+      MLA(hi, lo, (*fo)[4], ptr[ 8]);
+      MLA(hi, lo, (*fo)[5], ptr[ 6]);
+      MLA(hi, lo, (*fo)[6], ptr[ 4]);
+      MLA(hi, lo, (*fo)[7], ptr[ 2]);
+
+      *pcm1 = SHIFT(-MLZ(hi, lo));
+      pcm1 += 8;
+
+      phase = (phase + 1) % 16;
+    }
+  }
+}
+
+/*
  * NAME:	synth->frame()
  * DESCRIPTION:	perform PCM synthesis of frame subband samples
  */
@@ -849,6 +987,11 @@ void mad_synth_frame(struct mad_synth *synth, struct mad_frame const *frame)
     synth->pcm.length     /= 2;
 
     synth_frame = synth_half;
+  } else if (frame->options & MAD_OPTION_QUARTERSAMPLERATE) {
+    synth->pcm.samplerate /= 4;
+    synth->pcm.length     /= 4;
+
+    synth_frame = synth_quarter;
   }
 
   synth_frame(synth, frame, nch, ns);

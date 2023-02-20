@@ -16,6 +16,20 @@ typedef mad_timer_t MAD_TIMER;
 
 typedef struct {
 
+  void* mp3_data;
+  size_t mp3_data_len;
+  int16_t mp3_quality;
+
+  uint8_t* mp3_title;
+  uint8_t* mp3_artist;
+  uint8_t* mp3_album;
+
+  int32_t mp3_sample_rate;
+  int32_t mp3_channels;
+  size_t resample_counter;
+
+  int32_t mp3_frame_options;
+
   MAD_STREAM mad_stream;
   MAD_FRAME mad_frame;
   MAD_SYNTH mad_synth;
@@ -23,21 +37,12 @@ typedef struct {
 
   MAD_PCM* current_mad_pcm;
 
-  void* mp3_data;
-  size_t mp3_data_len;
-
-  int32_t mp3_frame_options;
-
-//  int32_t mp3_bit_rate;
-  int32_t mp3_sample_rate;
-  int32_t mp3_channels;
-
-  size_t resample_counter;
-
 } MP3_DECODE_HANDLE;
 
-int32_t mp3_init(MP3_DECODE_HANDLE* decode, void* mp3_data, size_t mp3_data_len, int16_t mp3_high_quality);
+int32_t mp3_init(MP3_DECODE_HANDLE* decode);
 void mp3_close(MP3_DECODE_HANDLE* decode);
+int32_t mp3_parse_tags(MP3_DECODE_HANDLE* decode, int16_t brightness, FILE* fp);
+int32_t mp3_decode_setup(MP3_DECODE_HANDLE* decode, void* mp3_data, size_t mp3_data_len, int16_t mp3_quality);
 int32_t mp3_decode(MP3_DECODE_HANDLE* decode, int16_t* resample_buffer, size_t resample_buffer_len, int16_t resample_freq, size_t* resampled_len);
 int32_t mp3_decode_full(MP3_DECODE_HANDLE* decode, int16_t* decode_buffer, size_t decode_buffer_bytes, size_t* decoded_bytes);
 
