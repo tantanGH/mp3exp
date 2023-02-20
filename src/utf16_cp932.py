@@ -1,5 +1,4 @@
 import os
-import sys
 
 cp932_code_bytes = [ bytes() ] * 0x10000
 
@@ -63,10 +62,6 @@ convert(0xea40, 0xeaff)
 convert(0xfa40, 0xfaff)
 convert(0xfb40, 0xfbff)
 convert(0xfc40, 0xfcff)
-
-#a = bytes([0x01,0x02,0x03])
-#print(a[0])
-#sys.exit()
 
 print("; UTF-16 to CP932 code mapping")
 print(".align 2")

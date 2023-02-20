@@ -7,6 +7,8 @@ ADPCM/PCM/MP3 player for X680x0/Human68k
  - 16bit符号付き big endian raw PCM (.S32/.S44/.S48/.M32/.M44/.M48)
  - MP3 (.MP3)
 
+MP3のアルバムアート表示(JPG/PNG)に対応しています。
+
 出力デバイスは内蔵ADPCMまたはMercury-Unit(V3.5以上)になります。組み込むPCM8ドライバによって決まります。
 
 - 出力先が内蔵ADPCMの時はすべての形式がリアルタイムに内蔵ADPCM(15.6kHz,mono)の音声に変換されます。
@@ -48,9 +50,15 @@ MP3再生時はデフォルトで周波数ハーフモードを使用するた�
 
 XM6 typeG
  - X68030 25MHz メモリ12MB MPU高速化許可 TS-6BE16拡張メモリ有効 ま〜きゅり〜ゆにっとV3.5
- - ハイメモリドライバ [TS16DRVp.X](https://t.co/qJDbBEiJsS)
+ - ハイメモリドライバ [TS16DRVp.X](https://t.co/qJDbBEiJsS) [https://twitter.com/arith_rose/status/1612786081308774402](https://twitter.com/arith_rose/status/1612786081308774402)
  - PCM8PP.X
  - MP3再生時にはMPUノーウェイト設定
+
+実行例
+
+    mp3exp -u -q1 -t50 hogehoge.mp3
+
+ホスト機に余裕があるならば -q1 ではなく -q0 で
 
 ---
 

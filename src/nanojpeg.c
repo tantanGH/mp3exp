@@ -27,6 +27,8 @@
 
 #include <stdint.h>
 
+#include "memory.h"
+
 #define GVRAM ((uint16_t*)0xC00000)
 
 static uint16_t rgb555_r[ 256 ];
@@ -214,8 +216,13 @@ int main(int argc, char* argv[]) {
 #if NJ_USE_LIBC
     #include <stdlib.h>
     #include <string.h>
+#ifndef __MP3EXP__
     #define njAllocMem malloc
     #define njFreeMem  free
+#else
+    #define njAllocMem(size)  malloc_himem(size,0)
+    #define njFreeMem(block)  free_himem(block,0)
+#endif
     #define njFillMem  memset
     #define njCopyMem  memcpy
 #elif NJ_USE_WIN32

@@ -99,8 +99,12 @@ void mp3_close(MP3_DECODE_HANDLE* decode) {
 static void convert_utf16_to_cp932(uint8_t* cp932_buffer, uint16_t* utf16_buffer, size_t utf16_len) {
   int16_t endian = utf16_buffer[0] == 0xfffe ? 0 : 1;   // 0:little, 1:big
   for (int16_t i = 0; i < utf16_len; i++) {
-    uint16_t utf16_code = endian == 0 ? ( utf16_buffer[i] << 8 ) | ( utf16_buffer[i] >> 8 ) : utf16_buffer[i];
-    strcat(cp932_buffer, (uint8_t*)(&utf16_to_cp932_map[ utf16_code ]));
+    uint16_t utf16_code = ( endian == 0 ) ? ( ( utf16_buffer[i] & 0xff ) << 8 ) | ( utf16_buffer[i] >> 8 ) : utf16_buffer[i];
+    uint16_t cp932_code = utf16_to_cp932_map[ utf16_code ];
+    size_t cp932_len = strlen(cp932_buffer);
+    cp932_buffer[ cp932_len ] = cp932_code >> 8;
+    cp932_buffer[ cp932_len + 1 ] = cp932_code & 0xff;
+    cp932_buffer[ cp932_len + 2 ] = '\0';
   }
 }
 
@@ -152,52 +156,70 @@ int32_t mp3_parse_tags(MP3_DECODE_HANDLE* decode, int16_t brightness, FILE* fp) 
 
     fread(frame_header, 1, 10, fp);
 
-    uint32_t frame_size = id3v2_version == 0x03 ? *((uint32_t*)(frame_header + 4)) :
+    uint32_t frame_size = (id3v2_version == 0x03) ? *((uint32_t*)(frame_header + 4)) :
                             ((frame_header[4] & 0x7f) << 21) | ((frame_header[5] & 0x7f) << 14) |
-                            ((frame_header[6] & 0x7f) << 7)  | (frame_header[7] & 0x7f);    
+                            ((frame_header[6] & 0x7f) << 7)  |  (frame_header[7] & 0x7f);    
 
     if (memcmp(frame_header, "0000", 4) < 0 || memcmp(frame_header, "ZZZZ", 4) > 0) {
+
       break;
+
     } else if (memcmp(frame_header, "TIT2", 4) == 0) {
+
+      // title
       uint8_t* frame_data = malloc_himem(frame_size, 0);
       fread(frame_data, 1, frame_size, fp);
+
       if (frame_data[0] == 0x00) {              // ISO-8859-1
         decode->mp3_title = frame_data + 1;
       } else if (frame_data[0] == 0x01) {       // UTF-16 with BOM
-        decode->mp3_title = malloc_himem(frame_size - 4 + 1, 0);
+        decode->mp3_title = malloc_himem(frame_size - 3 + 1, 0);
         decode->mp3_title[0] = '\0';
-        convert_utf16_to_cp932(decode->mp3_title, (uint16_t*)(frame_data+4), (frame_size-4)/2);
+        convert_utf16_to_cp932(decode->mp3_title, (uint16_t*)(frame_data + 1), (frame_size - 1)/2);
       }   
       free_himem(frame_data, 0);   
+
     } else if (memcmp(frame_header, "TPE1", 4) == 0) {
+
+      // artist
       uint8_t* frame_data = malloc_himem(frame_size, 0);
       fread(frame_data, 1, frame_size, fp);
+
       if (frame_data[0] == 0x00) {              // ISO-8859-1
         decode->mp3_artist = frame_data + 1;
       } else if (frame_data[0] == 0x01) {       // UTF-16 with BOM
-        decode->mp3_artist = malloc_himem(frame_size - 4 + 1, 0);
+        decode->mp3_artist = malloc_himem(frame_size - 3 + 1, 0);
         decode->mp3_artist[0] = '\0';
-        convert_utf16_to_cp932(decode->mp3_artist, (uint16_t*)(frame_data+4), (frame_size-4)/2);
+        convert_utf16_to_cp932(decode->mp3_artist, (uint16_t*)(frame_data + 1), (frame_size - 1)/2);
       }
       free_himem(frame_data, 0);   
+
     } else if (memcmp(frame_header, "TALB", 4) == 0) {
+
+      // album
       uint8_t* frame_data = malloc_himem(frame_size, 0);
       fread(frame_data, 1, frame_size, fp);
+
       if (frame_data[0] == 0x00) {              // ISO-8859-1
         decode->mp3_album = frame_data + 1;
       } else if (frame_data[0] == 0x01) {       // UTF-16 with BOM
-        decode->mp3_album = malloc_himem(frame_size - 4 + 1, 0);
+        decode->mp3_album = malloc_himem(frame_size - 3 + 1, 0);
         decode->mp3_album[0] = '\0';
-        convert_utf16_to_cp932(decode->mp3_album, (uint16_t*)(frame_data+4), (frame_size-4)/2);
+        convert_utf16_to_cp932(decode->mp3_album, (uint16_t*)(frame_data + 1), (frame_size - 1)/2);
       }
       free_himem(frame_data, 0);
+
     } else if (brightness > 0 && memcmp(frame_header, "APIC", 4) == 0) {
+
+      // album art
       uint8_t* frame_data = malloc_himem(frame_size, 0);
       fread(frame_data, 1, frame_size, fp);
+
       uint8_t* mime = frame_data+1;
       uint8_t* desc = mime + strlen(mime) + 1 + 1;
       uint8_t* pic_data = desc + strlen(desc) + 1;
       uint32_t pic_data_len = frame_size - (pic_data - frame_data);
+
       if (pic_data[0] == 0xff && pic_data[1] == 0xd8) {
         // jpeg
         njInit(brightness);
@@ -211,10 +233,14 @@ int32_t mp3_parse_tags(MP3_DECODE_HANDLE* decode, int16_t brightness, FILE* fp) 
         png_load(&png, pic_data, pic_data_len);
         png_close(&png);
       }
+
     } else {
+      // other tags
       fseek(fp, frame_size, SEEK_CUR);
     }
+
     ofs += 10 + frame_size;
+
   }
 
   return 10 + total_tag_size;
