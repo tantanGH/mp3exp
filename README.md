@@ -138,7 +138,7 @@ PNGデコードのために zlib をx68k向けにコンパイルしたものを�
 * PCM8A.X thanks to phillyさん
 * PCM8PP.X thanks to たにぃさん
 * TS16DRVp.X thanks to M.Kamadaさん / はぅさん / みゆ🌹ฅ^•ω•^ฅ さん
-* MicroPython.X thanks to YuNKさん
+* MicroPython.X thanks to YuNKさん / daaさん
 
 ---
 
