@@ -18,7 +18,7 @@ static uint16_t rgb555_b[ 256 ];
 //
 //  initialize PNG decode handle
 //
-void png_init(PNG_DECODE_HANDLE* png, int16_t brightness) {
+void png_init(PNG_DECODE_HANDLE* png, int16_t brightness, int16_t half_size) {
 
   png->use_extended_graphic = 0;
   png->use_high_memory = 0;
@@ -26,6 +26,7 @@ void png_init(PNG_DECODE_HANDLE* png, int16_t brightness) {
   png->output_buffer_size = 65536 * 4;
   png->centering = 1;
 //  png->no_signature_check = 1;
+  png->half_size = half_size;
 
   // actual width and height
   if (png->use_extended_graphic) {
@@ -82,8 +83,10 @@ static void png_set_header(PNG_DECODE_HANDLE* png, PNG_HEADER* png_header) {
   if (png->centering) {
     int32_t screen_width  = png->use_extended_graphic ? 768 : 512;
     int32_t screen_height = 512;
-    png->offset_x = ( png_header->width  <= screen_width ) ? ( screen_width  - png_header->width  ) >> 1 : 0;
-    png->offset_y = ( png_header->height <= screen_width ) ? ( screen_height - png_header->height ) >> 1 : 0;
+    int32_t w = png->half_size ? png_header->width/2  : png_header->width;
+    int32_t h = png->half_size ? png_header->height/2 : png_header->height;
+    png->offset_x = ( w <= screen_width ) ? ( screen_width  - w ) >> 1 : 0;
+    png->offset_y = ( h <= screen_width ) ? ( screen_height - h ) >> 1 : 0;
   }
 
 }
@@ -139,16 +142,18 @@ static void output_pixel(uint8_t* buffer, size_t buffer_size, int32_t* buffer_co
   uint8_t* buffer_end = buffer + buffer_size;
   
   // cropping check
-  if ((png->offset_y + png->current_y) >= png->actual_height) {
+  int32_t py = png->half_size ? png->current_y / 2 : png->current_y;
+  if ((png->offset_y + py) >= png->actual_height) {
     // no need to output any pixels
     *buffer_consumed = buffer_size;     // just consumed all
     return;
   }
 
   // GVRAM entry point
+  int32_t px = png->current_x < 0 ? 0 : png->half_size ? png->current_x / 2 : png->current_x;
   volatile uint16_t* gvram_current = GVRAM +  
-                                    png->actual_width * (png->offset_y + png->current_y) + 
-                                    png->offset_x + (png->current_x >= 0 ? png->current_x : 0);
+                                    png->actual_width * (png->offset_y + py) + 
+                                    png->offset_x + px;
 
   while (buffer < buffer_end) {
 
@@ -241,8 +246,11 @@ static void output_pixel(uint8_t* buffer, size_t buffer_size, int32_t* buffer_co
       }
 
       // write pixel data with cropping
-      if ((png->offset_x + png->current_x) < png->actual_width) {
-        *gvram_current++ = rgb555_r[rf] | rgb555_g[gf] | rgb555_b[bf];
+      px = png->half_size ? png->current_x / 2 : png->current_x;
+      if ((png->offset_x + px) < png->actual_width) {
+        if (!png->half_size || ((png->current_x & 0x01) && (png->current_y & 0x01))) {
+          *gvram_current++ = rgb555_r[rf] | rgb555_g[gf] | rgb555_b[bf];
+        }
       }
 #ifdef DEBUG
       //printf("pixel: x=%d,y=%d,r=%d,g=%d,b=%d,rf=%d,gf=%d,bf=%d\n",g_current_x,g_current_y,r,g,b,rf,gf,bf);
@@ -270,8 +278,9 @@ static void output_pixel(uint8_t* buffer, size_t buffer_size, int32_t* buffer_co
       if (png->current_x >= png->png_header.width) {
         png->current_x = -1;
         png->current_y++;
-        if ((png->offset_y + png->current_y) >= png->actual_height) break;  // Y cropping
-        gvram_current = GVRAM + png->actual_width * (png->offset_y + png->current_y) + png->offset_x;
+        int32_t py = png->half_size ? png->current_y / 2 : png->current_y;
+        if ((png->offset_y + py) >= png->actual_height) break;  // Y cropping
+        gvram_current = GVRAM + png->actual_width * (png->offset_y + py) + png->offset_x;
       }
 
     }

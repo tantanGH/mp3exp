@@ -7,6 +7,12 @@
 #ifndef _NANOJPEG_H
 #define _NANOJPEG_H
 
+#define __MP3EXP__
+
+#ifdef __MP3EXP__
+#include <stdint.h>
+#endif
+
 // nj_result_t: Result codes for njDecode().
 typedef enum _nj_result {
     NJ_OK = 0,        // no error, decoding successful
@@ -29,7 +35,12 @@ void njInit(int brightness);
 //   jpeg = The pointer to the memory dump.
 //   size = The size of the JPEG file.
 // Return value: The error code in case of failure, or NJ_OK (zero) on success.
+
+#ifdef __MP3EXP__
+nj_result_t njDecode(const void* jpeg, const int size, int16_t pic_half_size);
+#else
 nj_result_t njDecode(const void* jpeg, const int size);
+#endif
 
 // njGetWidth: Return the width (in pixels) of the most recently decoded
 // image. If njDecode() failed, the result of njGetWidth() is undefined.

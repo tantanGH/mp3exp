@@ -39,11 +39,12 @@ static void show_help_message() {
   printf("usage: mp3exp [options] <input-file[.pcm|.s32|.s44|.s48|.m32|.m44|.m48|.mp3]>\n");
   printf("options:\n");
   printf("     -a    ... use MP3EXP for ADPCM encoding\n");
-  printf("     -b<n> ... buffer size [x 64KB] (2-32,default:4)\n");
+  printf("     -b<n> ... buffer size [x 64KB] (2-512,default:4)\n");
   printf("     -u    ... use 060turbo/ts-6be16 high memory for buffering\n");
   printf("     -l[n] ... loop count (none:infinite, default:1)\n");
   printf("     -q[n] ... mp3 quality (0:high, 1:normal, default:1)\n");
   printf("     -t[n] ... mp3 album art display brightness (1-100, default:off)\n");
+  printf("     -x    ... mp3 album art display half size\n");
   printf("     -v[n] ... pcm8a/pcm8pp volume (1-15, default:8)\n");
   printf("     -h    ... show help message\n");
 }
@@ -66,6 +67,7 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
   int32_t adpcm_output_freq = 15625;
   int16_t mp3_quality = 1;
   int16_t mp3_pic_brightness = 0;
+  int16_t mp3_pic_half_size = 0;
   int16_t pcm8_volume = 8;
   for (int16_t i = 1; i < argc; i++) {
     if (argv[i][0] == '-' && strlen(argv[i]) >= 2) {
@@ -73,7 +75,7 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
         encode_with_self = 1;
       } else if (argv[i][1] == 'b') {
         num_chains = atoi(argv[i]+2);
-        if (num_chains < 2 || num_chains > 32) {
+        if (num_chains < 2 || num_chains > 512) {
           show_help_message();
           goto exit;
         }
@@ -93,6 +95,8 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
           show_help_message();
           goto exit;
         }
+      } else if (argv[i][1] == 'x') {
+        mp3_pic_half_size = 1;
       } else if (argv[i][1] == 'v') {
         pcm8_volume = atoi(argv[i]+2);
         if (pcm8_volume < 1 || pcm8_volume > 15 || strlen(argv[i]) < 3) {
@@ -101,7 +105,7 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
         }
       } else if (argv[i][1] == 'o') {
         int16_t out_freq = atoi(argv[i]+2);
-        if (out_freq == 0) {
+        if (out_freq == 2) {
           adpcm_output_freq = 7812;
         } else if (out_freq == 1) {
           adpcm_output_freq = 10417;
@@ -281,7 +285,7 @@ try:
   size_t skip_offset = 0;
   if (decode_mode == DECODE_MODE_MP3) {
     printf("\rparsing ID3v2 tag and album art...");
-    int32_t ofs = mp3_parse_tags(&mp3_decoder, mp3_pic_brightness, fp);
+    int32_t ofs = mp3_parse_tags(&mp3_decoder, mp3_pic_brightness, mp3_pic_half_size, fp);
     if (ofs < 0) {
       printf("\rerror: ID3v2 tag parse error.\x1b[0K\n");
       goto catch;

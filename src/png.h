@@ -31,6 +31,7 @@ typedef struct {
   int32_t offset_x;
   int32_t offset_y;
 //  int32_t no_signature_check;
+  int32_t half_size;
 
   // png header copy
   PNG_HEADER png_header;
@@ -60,7 +61,7 @@ typedef struct {
 } PNG_DECODE_HANDLE;
 
 // prototype declarations
-void png_init(PNG_DECODE_HANDLE* png, int16_t brightness);
+void png_init(PNG_DECODE_HANDLE* png, int16_t brightness, int16_t half_size);
 int32_t png_load(PNG_DECODE_HANDLE* png, uint8_t* png_data, size_t png_bytes);
 void png_close(PNG_DECODE_HANDLE* png);
 
