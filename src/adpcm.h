@@ -6,7 +6,7 @@
 #include <stddef.h>
 
 #define ADPCM_BUFFER_SIZE  (0xff00)
-#define ADPCM_MAX_BUFFER_COUNT (40)
+#define ADPCM_MAX_BUFFER_COUNT (132)
 
 typedef struct {
   int16_t step_index;

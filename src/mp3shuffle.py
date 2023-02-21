@@ -62,7 +62,7 @@ def main():
     # execute mp3exp as a child process
     for f in files:
       x68k.crtmod(16,True)            # reset screen
-      cmd = f"mp3exp -u -t50 -q1 {f}"
+      cmd = f"mp3exp -u -t70 -x -q1 {f}"
       print(f"COMMAND: {cmd}\n")
       if os.system(cmd) != 0:
         terminate = True
