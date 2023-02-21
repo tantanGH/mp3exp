@@ -110,6 +110,12 @@ XM6gエミュレータでの検証では MPUノーウェイト オプション�
 
 ---
 
+### Shuffle play
+
+ソースツリーの中にある `mp3shuffle.py` は [MicroPython for X680x0](https://github.com/yunkya2/micropython-x68k) 上で動作するシャッフル再生ツールです。カレントディレクトリにあるMP3ファイルをランダムに選択して再生します。コマンドライン引数で何ループするかを指定できます。
+
+---
+
 ### License
 
 MP3デコードライブラリとして libmad 0.15.1b をx68k向けにコンパイルしたものを利用させて頂いています。libmad は GPLv2 ライセンスです。
@@ -132,6 +138,7 @@ PNGデコードのために zlib をx68k向けにコンパイルしたものを�
 * PCM8A.X thanks to phillyさん
 * PCM8PP.X thanks to たにぃさん
 * TS16DRVp.X thanks to M.Kamadaさん / はぅさん / みゆ🌹ฅ^•ω•^ฅ さん
+* MicroPython.X thanks to YuNKさん
 
 ---
 
