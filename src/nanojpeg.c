@@ -26,7 +26,6 @@
 #ifdef __MP3EXP__
 
 #include <stdint.h>
-
 #include "memory.h"
 
 #define GVRAM ((uint16_t*)0xC00000)
@@ -771,7 +770,11 @@ NJ_INLINE void njUpsample(nj_component_t* c) {
 
 #endif
 
+#ifdef __MP3EXP__
+NJ_INLINE void njConvert(int16_t pic_half_size) {
+#else
 NJ_INLINE void njConvert(void) {
+#endif
     int i;
     nj_component_t* c;
     for (i = 0, c = nj.comp;  i < nj.ncomp;  ++i, ++c) {
@@ -791,43 +794,75 @@ NJ_INLINE void njConvert(void) {
     if (nj.ncomp == 3) {
         // convert to RGB
         int x, yy;
-#ifdef __MP3EXP__
-        uint16_t ofs_x = (nj.width  > 512) ? 0 : (512 - nj.width ) / 2;
-        uint16_t ofs_y = (nj.height > 512) ? 0 : (512 - nj.height) / 2;
-#else
-        unsigned char *prgb = nj.rgb;
-#endif
         const unsigned char *py  = nj.comp[0].pixels;
         const unsigned char *pcb = nj.comp[1].pixels;
         const unsigned char *pcr = nj.comp[2].pixels;
+#ifndef __MP3EXP__
+        unsigned char *prgb = nj.rgb;
         for (yy = nj.height;  yy;  --yy) {
-#ifdef __MP3EXP__
-            if ((ofs_y + (nj.height - yy)) > 511) continue;
-            uint16_t* gvram = &(GVRAM[ ( ofs_y + (nj.height - yy)) * 512 + ofs_x ]);
-#endif
             for (x = 0;  x < nj.width;  ++x) {
-#ifdef __MP3EXP__
-                if ((ofs_x + x) > 511) continue;
-#endif
                 register int y = py[x] << 8;
                 register int cb = pcb[x] - 128;
                 register int cr = pcr[x] - 128;
-#ifdef __MP3EXP__
-                int16_t r = njClip((y            + 359 * cr + 128) >> 8);
-                int16_t g = njClip((y -  88 * cb - 183 * cr + 128) >> 8);
-                int16_t b = njClip((y + 454 * cb            + 128) >> 8);
-                uint16_t rgb555 = rgb555_g[ g ] | rgb555_r[ r ] | rgb555_b[ b ];
-                gvram[x] = rgb555;
-#else
                 *prgb++ = njClip((y            + 359 * cr + 128) >> 8);
                 *prgb++ = njClip((y -  88 * cb - 183 * cr + 128) >> 8);
                 *prgb++ = njClip((y + 454 * cb            + 128) >> 8);
-#endif
             }
             py += nj.comp[0].stride;
             pcb += nj.comp[1].stride;
             pcr += nj.comp[2].stride;
         }
+#else
+        if (pic_half_size) {
+          uint16_t w = nj.width  / 2;
+          uint16_t h = nj.height / 2;
+          uint16_t ofs_x = (w > 512) ? 0 : (512 - w) / 2;
+          uint16_t ofs_y = (h > 512) ? 0 : (512 - h) / 2;
+          for (yy = nj.height;  yy;  --yy) {
+            if ((ofs_y + (nj.height - yy)/2) > 511) continue;
+            if (!(yy & 0x01)) {
+              uint16_t* gvram = &(GVRAM[ ( ofs_y + (nj.height - yy)/2) * 512 + ofs_x ]);
+              for (x = 0; x < nj.width;  ++x) {
+                if ((ofs_x + x/2) > 511) continue;
+                if (!(x & 0x01)) {
+                  register int y = py[x] << 8;
+                  register int cb = pcb[x] - 128;
+                  register int cr = pcr[x] - 128;
+                  int16_t r = njClip((y            + 359 * cr + 128) >> 8);
+                  int16_t g = njClip((y -  88 * cb - 183 * cr + 128) >> 8);
+                  int16_t b = njClip((y + 454 * cb            + 128) >> 8);
+                  uint16_t rgb555 = rgb555_g[ g ] | rgb555_r[ r ] | rgb555_b[ b ];
+                  gvram[x/2] = rgb555;
+                }
+              }
+            }
+            py += nj.comp[0].stride;
+            pcb += nj.comp[1].stride;
+            pcr += nj.comp[2].stride;
+          }
+        } else {
+          uint16_t ofs_x = (nj.width  > 512) ? 0 : (512 - nj.width ) / 2;
+          uint16_t ofs_y = (nj.height > 512) ? 0 : (512 - nj.height) / 2;
+          for (yy = nj.height;  yy;  --yy) {
+            if ((ofs_y + (nj.height - yy)) > 511) continue;
+            uint16_t* gvram = &(GVRAM[ ( ofs_y + (nj.height - yy)) * 512 + ofs_x ]);
+            for (x = 0; x < nj.width;  ++x) {
+              if ((ofs_x + x) > 511) continue;
+              register int y = py[x] << 8;
+              register int cb = pcb[x] - 128;
+              register int cr = pcr[x] - 128;
+              int16_t r = njClip((y            + 359 * cr + 128) >> 8);
+              int16_t g = njClip((y -  88 * cb - 183 * cr + 128) >> 8);
+              int16_t b = njClip((y + 454 * cb            + 128) >> 8);
+              uint16_t rgb555 = rgb555_g[ g ] | rgb555_r[ r ] | rgb555_b[ b ];
+              gvram[x] = rgb555;
+            }
+            py += nj.comp[0].stride;
+            pcb += nj.comp[1].stride;
+            pcr += nj.comp[2].stride;
+          }
+        }
+#endif
     } else if (nj.comp[0].width != nj.comp[0].stride) {
         // grayscale -> only remove stride
         unsigned char *pin = &nj.comp[0].pixels[nj.comp[0].stride];
@@ -874,7 +909,11 @@ void njDone(void) {
 #endif
 }
 
+#ifdef __MP3EXP__
+nj_result_t njDecode(const void* jpeg, const int size, int16_t pic_half_size) {
+#else
 nj_result_t njDecode(const void* jpeg, const int size) {
+#endif
     njDone();
     nj.pos = (const unsigned char*) jpeg;
     nj.size = size & 0x7FFFFFFF;
@@ -900,7 +939,11 @@ nj_result_t njDecode(const void* jpeg, const int size) {
     }
     if (nj.error != __NJ_FINISHED) return nj.error;
     nj.error = NJ_OK;
+#ifdef __MP3EXP__
+    njConvert(pic_half_size);
+#else
     njConvert();
+#endif
     return nj.error;
 }
 

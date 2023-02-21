@@ -111,7 +111,7 @@ static void convert_utf16_to_cp932(uint8_t* cp932_buffer, uint16_t* utf16_buffer
 //
 //  parse ID3v2 tags
 //
-int32_t mp3_parse_tags(MP3_DECODE_HANDLE* decode, int16_t brightness, FILE* fp) {
+int32_t mp3_parse_tags(MP3_DECODE_HANDLE* decode, int16_t pic_brightness, int16_t pic_half_size, FILE* fp) {
 
   // read the first 10 bytes of the MP3 file
   uint8_t mp3_header[10];
@@ -209,7 +209,7 @@ int32_t mp3_parse_tags(MP3_DECODE_HANDLE* decode, int16_t brightness, FILE* fp) 
       }
       free_himem(frame_data, 0);
 
-    } else if (brightness > 0 && memcmp(frame_header, "APIC", 4) == 0) {
+    } else if (pic_brightness > 0 && memcmp(frame_header, "APIC", 4) == 0) {
 
       // album art
       uint8_t* frame_data = malloc_himem(frame_size, 0);
@@ -222,14 +222,14 @@ int32_t mp3_parse_tags(MP3_DECODE_HANDLE* decode, int16_t brightness, FILE* fp) 
 
       if (pic_data[0] == 0xff && pic_data[1] == 0xd8) {
         // jpeg
-        njInit(brightness);
-        if (njDecode(pic_data, pic_data_len) == NJ_OK) {
+        njInit(pic_brightness);
+        if (njDecode(pic_data, pic_data_len, pic_half_size) == NJ_OK) {
           njDone();
         }
       } else if (pic_data[0] == 0x89 && pic_data[1] == 0x50) {
         // png
         PNG_DECODE_HANDLE png = { 0 };
-        png_init(&png, brightness);
+        png_init(&png, pic_brightness, pic_half_size);
         png_load(&png, pic_data, pic_data_len);
         png_close(&png);
       }
