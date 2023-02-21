@@ -1,3 +1,7 @@
+#
+#  utf-16 to sjis(cp932) code mapping table generation tool (output: HAS *.s format)
+#
+
 import os
 
 cp932_code_bytes = [ bytes() ] * 0x10000
