@@ -114,6 +114,8 @@ XM6gエミュレータでの検証では MPUノーウェイト オプション�
 
 ソースツリーの中にある `mp3shuffle.py` は [MicroPython for X680x0](https://github.com/yunkya2/micropython-x68k) 上で動作するシャッフル再生ツールです。カレントディレクトリにあるMP3ファイルをランダムに選択して再生します。コマンドライン引数で何ループするかを指定できます。
 
+<img src='images/mp3exp2.png' width='800'/>
+
 ---
 
 ### License
