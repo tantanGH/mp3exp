@@ -2,7 +2,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include "adpcm.h"
-#include "memory.h"
+#include "himem.h"
 
 //
 //  MSM6258V ADPCM constant tables
@@ -108,7 +108,7 @@ int32_t adpcm_init(ADPCM_HANDLE* adpcm, int16_t buffer_count, int16_t use_high_m
   adpcm->buffer_ofs = 0;
 
   for (int16_t i = 0; i < adpcm->buffer_count; i++) {
-    adpcm->buffers[i] = malloc_himem(adpcm->buffer_bytes, adpcm->use_high_memory);
+    adpcm->buffers[i] = himem_malloc(adpcm->buffer_bytes, adpcm->use_high_memory);
     if (adpcm->buffers[i] == NULL) {
       goto exit;
     }
@@ -128,7 +128,7 @@ void adpcm_close(ADPCM_HANDLE* adpcm) {
   // reclaim buffers
   for (int16_t i = 0; i < adpcm->buffer_count; i++) {
     if (adpcm->buffers[i] != NULL) {
-      free_himem(adpcm->buffers[i], adpcm->use_high_memory);
+      himem_free(adpcm->buffers[i], adpcm->use_high_memory);
       adpcm->buffers[i] = NULL;
     }
   }

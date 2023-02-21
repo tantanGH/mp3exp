@@ -26,7 +26,7 @@
 #ifdef __MP3EXP__
 
 #include <stdint.h>
-#include "memory.h"
+#include "himem.h"
 
 #define GVRAM ((uint16_t*)0xC00000)
 
@@ -219,8 +219,8 @@ int main(int argc, char* argv[]) {
     #define njAllocMem malloc
     #define njFreeMem  free
 #else
-    #define njAllocMem(size)  malloc_himem(size,0)
-    #define njFreeMem(block)  free_himem(block,0)
+    #define njAllocMem(size)  himem_malloc(size,0)
+    #define njFreeMem(block)  himem_free(block,0)
 #endif
     #define njFillMem  memset
     #define njCopyMem  memcpy

@@ -1,7 +1,7 @@
 #include <string.h>
 
 #include "buffer.h"
-#include "memory.h"
+#include "himem.h"
 
 //
 //  open buffer
@@ -11,7 +11,7 @@ int32_t buffer_open(BUFFER_HANDLE* buf, FILE* fp) {
   buf->fp = fp;     // if fp is NULL, we use this instance as memory only buffer
   buf->rofs = 0;
   buf->wofs = 0;
-  buf->buffer_data = malloc_himem(buf->buffer_size, buf->use_high_memory);
+  buf->buffer_data = himem_malloc(buf->buffer_size, buf->use_high_memory);
 
   return buf->buffer_data != NULL ? 0 : -1;
 }
@@ -21,7 +21,7 @@ int32_t buffer_open(BUFFER_HANDLE* buf, FILE* fp) {
 //
 void buffer_close(BUFFER_HANDLE* buf) {
   if (buf->buffer_data != NULL) {
-    free_himem(buf->buffer_data, buf->use_high_memory);
+    himem_free(buf->buffer_data, buf->use_high_memory);
   }
   // note: do not close fp
 }

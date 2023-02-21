@@ -2,10 +2,10 @@
 #include <stddef.h>
 #include <iocslib.h>
 #include <doslib.h>
-#include "memory.h"
+#include "himem.h"
 
 // allocate high memory
-static void* __malloc_himem(size_t size) {
+static void* __himem_malloc(size_t size) {
 
     struct REGS in_regs = { 0 };
     struct REGS out_regs = { 0 };
@@ -22,7 +22,7 @@ static void* __malloc_himem(size_t size) {
 }
 
 // free high memory
-static void __free_himem(void* ptr) {
+static void __himem_free(void* ptr) {
     
     struct REGS in_regs = { 0 };
     struct REGS out_regs = { 0 };
@@ -35,7 +35,7 @@ static void __free_himem(void* ptr) {
 }
 
 // resize high memory
-int __resize_himem(void* ptr, size_t size) {
+int __himem_resize(void* ptr, size_t size) {
 
     struct REGS in_regs = { 0 };
     struct REGS out_regs = { 0 };
@@ -51,37 +51,43 @@ int __resize_himem(void* ptr, size_t size) {
 }
 
 // allocate main memory
-static void* __malloc_mainmem(size_t size) {
+static void* __mainmem_malloc(size_t size) {
   uint32_t addr = MALLOC(size);
   return (addr >= 0x81000000) ? NULL : (void*)addr;
 }
 
 // free main memory
-static void __free_mainmem(void* ptr) {
+static void __mainmem_free(void* ptr) {
   if (ptr == NULL) return;
   MFREE((uint32_t)ptr);
 }
 
 // resize main memory
-static int32_t __resize_mainmem(void* ptr, size_t size) {
+static int32_t __mainmem_resize(void* ptr, size_t size) {
   return SETBLOCK((uint32_t)ptr, size);
 }
 
 // allocate memory
-void* malloc_himem(size_t size, int32_t use_high_memory) {
-    return use_high_memory ? __malloc_himem(size) : __malloc_mainmem(size);
+void* himem_malloc(size_t size, int32_t use_high_memory) {
+    return use_high_memory ? __himem_malloc(size) : __mainmem_malloc(size);
 }
 
 // free memory
-void free_himem(void* ptr, int32_t use_high_memory) {
+void himem_free(void* ptr, int32_t use_high_memory) {
     if (use_high_memory) {
-        __free_himem(ptr);
+        __himem_free(ptr);
     } else {
-        __free_mainmem(ptr);
+        __mainmem_free(ptr);
     }
 }
 
 // resize memory
-int32_t resize_himem(void* ptr, size_t size, int32_t use_high_memory) {
-    return use_high_memory ? __resize_himem(ptr, size) : __resize_mainmem(ptr, size);
+int32_t himem_resize(void* ptr, size_t size, int32_t use_high_memory) {
+    return use_high_memory ? __himem_resize(ptr, size) : __mainmem_resize(ptr, size);
+}
+
+// check high memory availability
+int32_t himem_isavailable() {
+  int32_t v = B_LPEEK((uint32_t*)(0x000400 + 4 * 0xf8));   // check IOCS $F8 vector  
+  return (v < 0 || (v >= 0xfe0000 && v <= 0xffffff)) ? 0 : 1;
 }
