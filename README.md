@@ -89,7 +89,7 @@ XM6gエミュレータでの検証では MPUノーウェイト オプション�
     usage: mp3exp [options] <input-file[.pcm|.s32|.s44|.s48|.m32|.m44|.m48|.mp3]>
     options:
          -a    ... do not use PCM8A.X for ADPCM encoding
-         -b<n> ... buffer size [x 64KB] (2-32,default:4)
+         -b<n> ... buffer size [x 64KB] (2-128,default:4)
          -u    ... use 060turbo/ts-6be16 high memory for buffering
          -l[n] ... loop count (none:infinite, default:1)
          -q[n] ... mp3 quality (0:high, 1:normal, default:1)
@@ -152,7 +152,8 @@ PNGデコードのために zlib をx68k向けにコンパイルしたものを�
 
 ### History
 
-* 0.6.2 (2023/02/22) ... -bオプションの最大値を32から512にした。アルバムアートをハーフサイズで表示するオプション(-x)追加
+* 0.6.3 (2023/02/22) ... -bオプションの最大値を32から128にした。
+* 0.6.2 (2023/02/22) ... アルバムアートをハーフサイズで表示するオプション(-x)追加
 * 0.6.1 (2023/02/21) ... PCM8A/PCM8PP使用時の音量指定オプション(-v)追加
 * 0.6.0 (2023/02/21) ... MP3アルバムアートワーク表示に対応, MP3曲名・アーティスト名・アルバム名表示に対応
 * 0.5.4 (2023/02/20) ... MP3のバッファサイズを取りすぎていたのを修正

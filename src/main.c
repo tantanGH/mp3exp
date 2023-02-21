@@ -39,7 +39,7 @@ static void show_help_message() {
   printf("usage: mp3exp [options] <input-file[.pcm|.s32|.s44|.s48|.m32|.m44|.m48|.mp3]>\n");
   printf("options:\n");
   printf("     -a    ... use MP3EXP for ADPCM encoding\n");
-  printf("     -b<n> ... buffer size [x 64KB] (2-512,default:4)\n");
+  printf("     -b<n> ... buffer size [x 64KB] (2-128,default:4)\n");
   printf("     -u    ... use 060turbo/ts-6be16 high memory for buffering\n");
   printf("     -l[n] ... loop count (none:infinite, default:1)\n");
   printf("     -q[n] ... mp3 quality (0:high, 1:normal, default:1)\n");
@@ -75,7 +75,7 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
         encode_with_self = 1;
       } else if (argv[i][1] == 'b') {
         num_chains = atoi(argv[i]+2);
-        if (num_chains < 2 || num_chains > 512) {
+        if (num_chains < 2 || num_chains > 128) {
           show_help_message();
           goto exit;
         }
