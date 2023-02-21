@@ -1,5 +1,5 @@
 #
-#  shuffle_mp3.py - MP3 file random player on MicroPython for X680x0
+#  mp3shuffle.py - random MP3 player on MicroPython for X680x0
 #
 
 import x68k
