@@ -10,25 +10,24 @@ import random
 from struct import pack
 from uctypes import addressof
 
+# extract wild card file names
 def list_files(wildcard_name):
 
-  #files = os.listdir(".")    # seems os.listdir() is not implemented yet
-
   files = []
+
   filbuf = bytearray(53)
   if x68k.dos(x68k.d.FILES,pack('llh',addressof(filbuf),addressof(wildcard_name),0x20)) < 0:
-    print("error: files dos call error.")
-    return None
+    return files
 
   while True:
 
-    #files.append(filbuf[30:52].rstrip(b'\x00'))   # seems bytearray.rstrip() is not implemented yet
+    name = filbuf[30:53]
+    for i in range(len(name)):
+      if name[i] == 0x00:
+        name = name[:i]
+        break
 
-    packedname = filbuf[30:52]
-    while packedname[-1] == 0x00:
-      packedname = packedname[:-1]
-
-    files.append(packedname.decode())
+    files.append(name.decode())
 
     if x68k.dos(x68k.d.NFILES,pack('l',addressof(filbuf))) < 0:
       break
@@ -43,17 +42,16 @@ def main():
   # list mp3 files in the current directory
   files = list_files(".\\*.mp3")
 
-  # infinite loop
+  # loop count
   loop_count = int(sys.argv[1]) if len(sys.argv) > 1 else 1
   
-  # return code
-  rc = 0
+  # loop cancel flag
+  terminate = False
 
   # main loop
   for i in range(loop_count):
 
     # shuffle files
-  #  files = random.sample(files, len(files)):     # seems random.sample() is not implemented
     for i in range(len(files)*3):
       a = random.randint(0,len(files)-1)
       b = random.randint(0,len(files)-1)
@@ -66,12 +64,12 @@ def main():
       x68k.crtmod(16,True)            # reset screen
       cmd = f"mp3exp -u -t50 -q1 {f}"
       print(f"COMMAND: {cmd}\n")
-      rc = os.system(cmd)
-      if rc != 0:                     # seems os.system() cannot return program exit code
+      if os.system(cmd) != 0:
+        terminate = True
         break
 
     # abort check
-    if rc != 0:
+    if terminate:
       break
 
 if __name__ == "__main__":
