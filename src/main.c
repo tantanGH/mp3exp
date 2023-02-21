@@ -44,6 +44,7 @@ static void show_help_message() {
   printf("     -l[n] ... loop count (none:infinite, default:1)\n");
   printf("     -q[n] ... mp3 quality (0:high, 1:normal, default:1)\n");
   printf("     -t[n] ... mp3 album art display brightness (1-100, default:off)\n");
+  printf("     -v[n] ... pcm8a/pcm8pp volume (1-15, default:8)\n");
   printf("     -h    ... show help message\n");
 }
 
@@ -65,6 +66,7 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
   int32_t adpcm_output_freq = 15625;
   int16_t mp3_quality = 1;
   int16_t mp3_pic_brightness = 0;
+  int16_t pcm8_volume = 8;
   for (int16_t i = 1; i < argc; i++) {
     if (argv[i][0] == '-' && strlen(argv[i]) >= 2) {
       if (argv[i][1] == 'a') {
@@ -88,6 +90,12 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
       } else if (argv[i][1] == 't') {
         mp3_pic_brightness = atoi(argv[i]+2);
         if (mp3_pic_brightness < 0 || mp3_pic_brightness > 100 || strlen(argv[i]) < 3) {
+          show_help_message();
+          goto exit;
+        }
+      } else if (argv[i][1] == 'v') {
+        pcm8_volume = atoi(argv[i]+2);
+        if (pcm8_volume < 1 || pcm8_volume > 15 || strlen(argv[i]) < 3) {
           show_help_message();
           goto exit;
         }
@@ -527,7 +535,7 @@ try:
 #endif      
     }
 
-    int16_t pcm8pp_volume = 0x08;
+    int16_t pcm8pp_volume = pcm8_volume;
     int16_t pcm8pp_pan = 0x03;
     int16_t pcm8pp_freq = pcm_freq == 16000 && pcm_channels == 1 ? 0x09 :
                           pcm_freq == 22050 && pcm_channels == 1 ? 0x0a :
@@ -549,15 +557,15 @@ try:
   } else if (pcm8_type == PCM8_TYPE_PCM8A && encode_mode == ENCODE_MODE_PCM8A) {
 
     // PCM8A encoding mode
-    int16_t pcm8a_channels = 1;
-    int16_t pcm8a_bytes_interrupt = 8;
-    int16_t pcm8a_max_volume = 0xa0;
-    int16_t pcm8a_min_volume = 0x40;
-    uint32_t pcm8a_sys_info = (pcm8a_channels << 24 ) | (pcm8a_bytes_interrupt << 16) | (pcm8a_max_volume << 8) | pcm8a_min_volume;
-    pcm8a_set_system_information(pcm8a_sys_info);
+//    int16_t pcm8a_channels = 1;
+//    int16_t pcm8a_bytes_interrupt = 8;
+//    int16_t pcm8a_max_volume = 0xa0;
+//    int16_t pcm8a_min_volume = 0x40;
+//    uint32_t pcm8a_sys_info = (pcm8a_channels << 24 ) | (pcm8a_bytes_interrupt << 16) | (pcm8a_max_volume << 8) | pcm8a_min_volume;
+//    pcm8a_set_system_information(pcm8a_sys_info);
     pcm8a_set_polyphonic_mode(1);   // must use polyphonic mode for 16bit PCM use
  
-    int16_t pcm8a_volume = 0x08;
+    int16_t pcm8a_volume = pcm8_volume;
     int16_t pcm8a_pan = 0x03;
     int16_t pcm8a_freq = adpcm_output_freq < 8000  ? 0x12 :
                          adpcm_output_freq < 11000 ? 0x13 : 0x14;
