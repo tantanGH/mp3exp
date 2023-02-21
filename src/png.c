@@ -4,7 +4,7 @@
 #include <zlib.h>
 
 #include "png.h"
-#include "memory.h"
+#include "himem.h"
 #include "buffer.h"
 
 // GVRAM memory address
@@ -75,9 +75,9 @@ static void png_set_header(PNG_DECODE_HANDLE* png, PNG_HEADER* png_header) {
   png->png_header.interlace_method   = png_header->interlace_method;
 
   // allocate buffer memory for upper scanline filtering
-  png->up_rf_ptr = malloc_himem(png_header->width, png->use_high_memory);
-  png->up_gf_ptr = malloc_himem(png_header->width, png->use_high_memory);
-  png->up_bf_ptr = malloc_himem(png_header->width, png->use_high_memory);
+  png->up_rf_ptr = himem_malloc(png_header->width, png->use_high_memory);
+  png->up_gf_ptr = himem_malloc(png_header->width, png->use_high_memory);
+  png->up_bf_ptr = himem_malloc(png_header->width, png->use_high_memory);
 
   // centering offset calculation
   if (png->centering) {
@@ -100,17 +100,17 @@ void png_close(PNG_DECODE_HANDLE* png) {
 
   // reclaim filter buffer memory
   if (png->up_rf_ptr != NULL) {
-    free_himem(png->up_rf_ptr, png->use_high_memory);
+    himem_free(png->up_rf_ptr, png->use_high_memory);
     png->up_rf_ptr = NULL;
   }
 
   if (png->up_gf_ptr != NULL) {
-    free_himem(png->up_gf_ptr, png->use_high_memory);
+    himem_free(png->up_gf_ptr, png->use_high_memory);
     png->up_gf_ptr = NULL;
   }
 
   if (png->up_bf_ptr != NULL) {
-    free_himem(png->up_bf_ptr, png->use_high_memory);
+    himem_free(png->up_bf_ptr, png->use_high_memory);
     png->up_bf_ptr = NULL;
   }
 

@@ -5,7 +5,7 @@
 #include <doslib.h>
 #include <iocslib.h>
 #include "keyboard.h"
-#include "memory.h"
+#include "himem.h"
 #include "pcm8.h"
 #include "pcm8a.h"
 #include "pcm8pp.h"
@@ -82,6 +82,10 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
       } else if (argv[i][1] == 'l') {
         loop_count = atoi(argv[i]+2);
       } else if (argv[i][1] == 'u') {
+        if (!himem_isavailable()) {
+          printf("error: high memory driver is not installed.\n");
+          goto exit;
+        }
         use_high_memory = 1;
       } else if (argv[i][1] == 'q') {
         mp3_quality = atoi(argv[i]+2);
@@ -310,7 +314,7 @@ try:
   //   pcm ... incremental (max 2 sec)
   size_t fread_buffer_len = ( decode_mode == DECODE_MODE_MP3 ) ? 2 + pcm_file_size / sizeof(int16_t) : pcm_freq * pcm_channels * 2;
   if (encode_mode != ENCODE_MODE_NONE) {
-    fread_buffer = malloc_himem(fread_buffer_len * sizeof(int16_t), decode_mode == DECODE_MODE_MP3 ? use_high_memory : 0);
+    fread_buffer = himem_malloc(fread_buffer_len * sizeof(int16_t), decode_mode == DECODE_MODE_MP3 ? use_high_memory : 0);
     if (fread_buffer == NULL) {
       printf("\rerror: file read buffer memory allocation error.\n");
       goto catch;
@@ -320,7 +324,7 @@ try:
   // allocate resampling buffer
   size_t resample_buffer_len = adpcm_output_freq * 2 + 32;     // max 2 second samples + error allowance
   if (encode_mode != ENCODE_MODE_NONE) {
-    resample_buffer = malloc_himem(resample_buffer_len * sizeof(int16_t), use_high_memory);
+    resample_buffer = himem_malloc(resample_buffer_len * sizeof(int16_t), use_high_memory);
     if (resample_buffer == NULL) {
       printf("\rerror: resampling buffer memory allocation error.\n");
       goto catch;
@@ -331,7 +335,7 @@ try:
   if (decode_mode == DECODE_MODE_MP3) {
     // full read with staging buffer
     printf("\rloading MP3...\x1b[0K");
-    fread_staging_buffer = malloc_himem(FREAD_STAGING_BUFFER_BYTES, 0);
+    fread_staging_buffer = himem_malloc(FREAD_STAGING_BUFFER_BYTES, 0);
     if (fread_staging_buffer == NULL) {
       printf("\rerror: file read staging buffer memory allocation error.\n");
       goto catch;
@@ -344,7 +348,7 @@ try:
     } while (read_len < pcm_file_size);
     fclose(fp);
     fp = NULL;
-    free_himem(fread_staging_buffer, 0);
+    himem_free(fread_staging_buffer, 0);
     fread_staging_buffer = NULL;
     if (mp3_decode_setup(&mp3_decoder, fread_buffer, pcm_file_size, mp3_quality) != 0) {
       printf("\rerror: MP3 decoder initialization error.\n");
@@ -828,15 +832,15 @@ catch:
 
   // reclaim memory buffers
   if (resample_buffer != NULL) {
-    free_himem(resample_buffer, use_high_memory);
+    himem_free(resample_buffer, use_high_memory);
     resample_buffer = NULL;
   }
   if (fread_staging_buffer != NULL) {
-    free_himem(fread_staging_buffer, 0);
+    himem_free(fread_staging_buffer, 0);
     fread_staging_buffer = NULL;
   }
   if (fread_buffer != NULL) {
-    free_himem(fread_buffer, decode_mode == DECODE_MODE_MP3 ? use_high_memory : 0);
+    himem_free(fread_buffer, decode_mode == DECODE_MODE_MP3 ? use_high_memory : 0);
     fread_buffer = NULL;
   }
 
