@@ -198,6 +198,7 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
   // enter supervisor mode and init crtc if album art is required
   if (mp3_pic_brightness > 0) {
     B_SUPER(0);
+    G_CLR_ON();
     crtc_set_extra_mode(0);
   }
 
