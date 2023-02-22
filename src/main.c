@@ -44,7 +44,7 @@ static void show_help_message() {
   printf("     -l[n] ... loop count (none:infinite, default:1)\n");
   printf("     -q[n] ... mp3 quality (0:high, 1:normal, default:1)\n");
   printf("     -t[n] ... mp3 album art display brightness (1-100, default:off)\n");
-  printf("     -x    ... mp3 album art display half size\n");
+  printf("     -x    ... mp3 album art display full size\n");
   printf("     -v[n] ... pcm8a/pcm8pp volume (1-15, default:8)\n");
   printf("     -h    ... show help message\n");
 }
@@ -67,7 +67,7 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
   int32_t adpcm_output_freq = 15625;
   int16_t mp3_quality = 1;
   int16_t mp3_pic_brightness = 0;
-  int16_t mp3_pic_half_size = 0;
+  int16_t mp3_pic_half_size = 1;
   int16_t pcm8_volume = 8;
   for (int16_t i = 1; i < argc; i++) {
     if (argv[i][0] == '-' && strlen(argv[i]) >= 2) {
@@ -100,7 +100,7 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
           goto exit;
         }
       } else if (argv[i][1] == 'x') {
-        mp3_pic_half_size = 1;
+        mp3_pic_half_size = 0;
       } else if (argv[i][1] == 'v') {
         pcm8_volume = atoi(argv[i]+2);
         if (pcm8_volume < 1 || pcm8_volume > 15 || strlen(argv[i]) < 3) {
@@ -399,10 +399,13 @@ try:
         mp3_quality == 2 ? "low" :
         mp3_quality == 1 ? "normal" : "high");
       if (mp3_decoder.mp3_title != NULL) {
-        printf("MP3 title     : %s / %s / %s\n",
-          mp3_decoder.mp3_title,
-          mp3_decoder.mp3_artist != NULL ? mp3_decoder.mp3_artist : (uint8_t*)"",
-          mp3_decoder.mp3_album != NULL ? mp3_decoder.mp3_album : (uint8_t*)"");
+        printf("MP3 title     : %s\n", mp3_decoder.mp3_title);
+      }
+      if (mp3_decoder.mp3_artist != NULL) {
+        printf("MP3 artist    : %s\n", mp3_decoder.mp3_artist);
+      }
+      if (mp3_decoder.mp3_album != NULL) {
+        printf("MP3 album     : %s\n", mp3_decoder.mp3_album);
       }
     }
 
