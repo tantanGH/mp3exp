@@ -40,7 +40,7 @@ static void show_help_message() {
   printf("usage: mp3exp [options] <input-file[.pcm|.s32|.s44|.s48|.m32|.m44|.m48|.a32|.a44|.a48|.mp3]>\n");
   printf("options:\n");
   printf("     -a    ... use MP3EXP for ADPCM encoding\n");
-  printf("     -b<n> ... buffer size [x 64KB] (2-128,default:4)\n");
+  printf("     -b<n> ... buffer size [x 64KB] (2-96,default:4)\n");
   printf("     -u    ... use 060turbo/ts-6be16 high memory for buffering\n");
   printf("     -l[n] ... loop count (none:infinite, default:1)\n");
   printf("     -q[n] ... mp3 quality (0:high, 1:normal, default:1)\n");
@@ -76,7 +76,7 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
         encode_with_self = 1;
       } else if (argv[i][1] == 'b') {
         num_chains = atoi(argv[i]+2);
-        if (num_chains < 2 || num_chains > 128) {
+        if (num_chains < 2 || num_chains > 96) {
           show_help_message();
           goto exit;
         }
@@ -279,7 +279,7 @@ try:
   MP3_DECODE_HANDLE mp3_decoder = { 0 };
   NAS_ADPCM_DECODE_HANDLE nas_adpcm_decoder = { 0 };
   static CHAIN_TABLE chain_tables[ MAX_CHAINS ];
- 
+
   // init adpcm encoder
   if (adpcm_init(&adpcm_encoder, num_chains+1, decode_mode == DECODE_MODE_MP3 && pcm8_type == PCM8_TYPE_PCM8A ? use_high_memory : 0) != 0) {
     printf("error: ADPCM encoder initialization error.\n");

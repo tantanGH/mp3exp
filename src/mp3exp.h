@@ -1,7 +1,7 @@
 #ifndef __H_MP3EXP__
 #define __H_MP3EXP__
 
-#define VERSION "0.6.9 (2023/02/23)"
+#define VERSION "0.6.9a (2023/02/23)"
 
 #define REG_DMAC_CH3_BAR (0xE840C0 + 0x1C)
 
@@ -20,7 +20,7 @@
 #define ENCODE_MODE_PCM8A  (2)
 #define ENCODE_MODE_PCM8PP (3)
 
-#define MAX_CHAINS (32)
+#define MAX_CHAINS (128)
 
 #define FREAD_STAGING_BUFFER_BYTES (65536*4)
 
