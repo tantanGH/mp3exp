@@ -45,7 +45,7 @@ C_SRCS = crtc.c himem.c nanojpeg.c buffer.c png.c pcm8.c pcm8a.c pcm8pp.c adpcm.
 ASM_SRCS = utf16_cp932.s nas_adpcmlib.s
 
 # *.h source files
-HEADER_SRCS = keyboard.h utf16_cp932.h macro.h crtc.h himem.h nanojpeg.h buffer.h png.h pcm8.h pcm8a.h pcm8pp.h adpcm.h nas_adpcm.h mp3.h mp3exp.h
+HEADER_SRCS = keyboard.h utf16_cp932.h nas_macro.h crtc.h himem.h nanojpeg.h buffer.h png.h pcm8.h pcm8a.h pcm8pp.h adpcm.h nas_adpcm.h mp3.h mp3exp.h
 
 # リンク対象のライブラリファイル
 # link custom libmad objects compiled with OPT_SPEED option instead of normal libmad.a
