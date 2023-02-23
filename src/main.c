@@ -297,10 +297,10 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
       encode_mode = ENCODE_MODE_PCM8A;
     } else {
       if (decode_mode == DECODE_MODE_MP3) {
-        printf("error: PCM8A or PCM8PP is required for MP3 playback.\n");
+        printf("error: PCM8A (>=1.02) or PCM8PP (>=0.83d) is required for MP3 playback.\n");
         goto exit;
       } else if (decode_mode == DECODE_MODE_NAS_ADPCM) {
-        printf("error: PCM8A or PCM8PP is required for NAS ADPCM playback.\n");
+        printf("error: PCM8A (>=1.02) or PCM8PP (>=0.83d) is required for NAS ADPCM playback.\n");
         goto exit;
       } else {
         printf("\n<<warning>> PCM8A/PCM8PP is not running. Use MP3EXP for ADPCM encoding.\n");

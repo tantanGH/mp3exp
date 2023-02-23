@@ -33,13 +33,13 @@ MP3のアルバムアート表示(JPEG/PNG)に対応しています。
 
 MPEXPxxx.ZIP をダウンロードして展開し、MP3EXP.X をパスの通ったディレクトリに置きます。
 
-デフォルトではADPCMのエンコードに philly さんの PCM8A.X を使用します(オリジナルのPCM8.Xではありません)。
+デフォルトではADPCMのエンコードに philly さんの PCM8A.X 1.02 を使用します(オリジナルのPCM8.Xではありません)。
 
 [PCM8A.X](http://retropc.net/x68000/software/sound/adpcm/pcm8a/)
 
-X68000 LIBRARY からダウンロードして導入してください。導入していない場合、またはオリジナルのPCM8.Xを使っている場合、内蔵ADPCMでの再生は可能ですが、PCM8A.X を導入した方がバッファリング時間などパフォーマンスが大きく改善します。
+導入していないかバージョンが1.02より古い場合は X68000 LIBRARY からダウンロードして導入してください。
 
-Mercury-Unit で再生する場合には たにぃ さんの PCM8PP.X を使用します。X68000 LIBRARY からダウンロードして導入してください。
+Mercury-Unit で再生する場合には たにぃ さんの PCM8PP.X 0.83d を使用します。導入していないかバージョンが古い場合は X68000 LIBRARY からダウンロードして導入してください。
 
 [PCM8PP.X](http://retropc.net/x68000/software/hardware/mercury/pcm8pp/)
 
