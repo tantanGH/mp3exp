@@ -10,6 +10,7 @@
 #include "pcm8a.h"
 #include "pcm8pp.h"
 #include "adpcm.h"
+#include "nas_adpcm.h"
 #include "mp3.h"
 #include "mp3exp.h"
 #include "crtc.h"
@@ -36,7 +37,7 @@ static void abort_application() {
 
 // show help message
 static void show_help_message() {
-  printf("usage: mp3exp [options] <input-file[.pcm|.s32|.s44|.s48|.m32|.m44|.m48|.mp3]>\n");
+  printf("usage: mp3exp [options] <input-file[.pcm|.s32|.s44|.s48|.m32|.m44|.m48|.a32|.a44|.a48|.mp3]>\n");
   printf("options:\n");
   printf("     -a    ... use MP3EXP for ADPCM encoding\n");
   printf("     -b<n> ... buffer size [x 64KB] (2-128,default:4)\n");
@@ -178,6 +179,21 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
     pcm_channels = 1;
     decode_mode = DECODE_MODE_RESAMPLE;
     encode_mode = ENCODE_MODE_SELF;
+  } else if (stricmp(".a32", pcm_file_exp) == 0) {
+    pcm_freq = 32000;
+    pcm_channels = 2;
+    decode_mode = DECODE_MODE_NAS_ADPCM;
+    encode_mode = ENCODE_MODE_SELF;
+  } else if (stricmp(".a44", pcm_file_exp) == 0) {
+    pcm_freq = 44100;
+    pcm_channels = 2;
+    decode_mode = DECODE_MODE_NAS_ADPCM;
+    encode_mode = ENCODE_MODE_SELF;
+  } else if (stricmp(".a48", pcm_file_exp) == 0) {
+    pcm_freq = 48000;
+    pcm_channels = 2;
+    decode_mode = DECODE_MODE_NAS_ADPCM;
+    encode_mode = ENCODE_MODE_SELF;
   } else if (stricmp(".mp3", pcm_file_exp) == 0) {
     pcm_freq = -1;
     pcm_channels = -1;
@@ -229,6 +245,9 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
       if (decode_mode == DECODE_MODE_MP3) {
         printf("error: PCM8A or PCM8PP is required for MP3 playback.\n");
         goto exit;
+      } else if (decode_mode == DECODE_MODE_NAS_ADPCM) {
+        printf("error: PCM8A or PCM8PP is required for NAS ADPCM playback.\n");
+        goto exit;
       } else {
         printf("\n<<warning>> PCM8A/PCM8PP is not running. Use MP3EXP for ADPCM encoding.\n");
         encode_mode = ENCODE_MODE_SELF;
@@ -258,6 +277,7 @@ try:
   // encoder, decoder and chain tables
   ADPCM_HANDLE adpcm_encoder = { 0 };
   MP3_DECODE_HANDLE mp3_decoder = { 0 };
+  NAS_ADPCM_DECODE_HANDLE nas_adpcm_decoder = { 0 };
   static CHAIN_TABLE chain_tables[ MAX_CHAINS ];
  
   // init adpcm encoder
@@ -267,9 +287,19 @@ try:
   }
 
   // init mp3 decoder
-  if (mp3_init(&mp3_decoder) != 0) {
-    printf("error: MP3 decoder initialization error.\n");
-    goto catch;    
+  if (decode_mode == DECODE_MODE_MP3) {
+    if (mp3_init(&mp3_decoder) != 0) {
+      printf("error: MP3 decoder initialization error.\n");
+      goto catch;    
+    }
+  }
+
+  // init nas adpcm decoder if needed
+  if (decode_mode == DECODE_MODE_NAS_ADPCM) {
+    if (nas_adpcm_init(&nas_adpcm_decoder, pcm_freq * pcm_channels * 4, pcm_freq, pcm_channels) != 0) {
+      printf("error: nas adpcm decoder initialization error.\n");
+      goto catch;
+    }
   }
 
   // init chain tables
@@ -296,24 +326,20 @@ try:
       goto catch;
     }
     skip_offset = ofs;
-    //if (mp3_decoder.mp3_pic && mp3_decoder.mp3_pic_data != NULL) {
-    //  crtc_set_extra_mode(0);
-    //  crtc_set_brightness(mp3_pic_brightness);
-    //  crtc_draw_bitmap(mp3_decoder.mp3_pic_data, mp3_decoder.mp3_pic_width, mp3_decoder.mp3_pic_height, 3);
-    //}
-    //printf("skip offset = %d\n",ofs);
   }
 
   // check file size
   fseek(fp, 0, SEEK_END);
   uint32_t pcm_file_size = ftell(fp) - skip_offset;
   fseek(fp, skip_offset, SEEK_SET);
-  //printf("pcm_file_size = %d\n", pcm_file_size);
 
   // allocate file read buffer
   //   mp3 ... full read
   //   pcm ... incremental (max 2 sec)
-  size_t fread_buffer_len = ( decode_mode == DECODE_MODE_MP3 ) ? 2 + pcm_file_size / sizeof(int16_t) : pcm_freq * pcm_channels * 2;
+  size_t fread_buffer_len = 
+    decode_mode == DECODE_MODE_MP3 ? 2 + pcm_file_size / sizeof(int16_t) : 
+    decode_mode == DECODE_MODE_NAS_ADPCM ? adpcm_encoder.buffer_bytes / 4 :
+    pcm_freq * pcm_channels * 2;
   if (encode_mode != ENCODE_MODE_NONE) {
     fread_buffer = himem_malloc(fread_buffer_len * sizeof(int16_t), decode_mode == DECODE_MODE_MP3 ? use_high_memory : 0);
     if (fread_buffer == NULL) {
@@ -366,7 +392,8 @@ try:
     printf("File name     : %s\n", pcm_file_name);
     printf("Data size     : %d [bytes]\n", pcm_file_size);
     printf("Data format   : %s\n", 
-      decode_mode == DECODE_MODE_MP3  ? "MP3" : 
+      decode_mode == DECODE_MODE_MP3 ? "MP3" : 
+      decode_mode == DECODE_MODE_NAS_ADPCM ? "NAS ADPCM" :
       encode_mode != ENCODE_MODE_NONE ? "16bit signed PCM (big)" : 
       "ADPCM(MSM6258V)");
 
@@ -375,6 +402,11 @@ try:
       printf("PCM frequency : %d [Hz]\n", pcm_freq);
       printf("PCM channels  : %s\n", pcm_channels == 1 ? "mono" : "stereo");
       printf("PCM length    : %4.2f [sec]\n", (float)pcm_file_size / pcm_1sec_size);
+    }
+
+    if (decode_mode == DECODE_MODE_NAS_ADPCM) {
+      printf("PCM frequency : %d [Hz]\n", pcm_freq);
+      printf("PCM channels  : %s\n", pcm_channels == 1 ? "mono" : "stereo");
     }
 
     // describe PCM drivers
@@ -447,6 +479,7 @@ try:
     } else if (encode_mode == ENCODE_MODE_PCM8PP) {
 
       if (decode_mode == DECODE_MODE_MP3) {
+
         // MP3 decode and PCM through (no encoding) with PCM8PP
         size_t decoded_bytes;
         if (mp3_decode_full(&mp3_decoder, chain_tables[i].buffer, adpcm_encoder.buffer_bytes, &decoded_bytes) != 0) {
@@ -458,7 +491,22 @@ try:
           chain_tables[i].next = NULL;
           end_flag = 1;
         }
+
+      } else if (decode_mode == DECODE_MODE_NAS_ADPCM) {
+
+        // NAS ADPCM decode and PCM through (no resample, no encoding) with PCM8PP
+        size_t fread_len = fread(fread_buffer, 1, fread_buffer_len * sizeof(int16_t), fp);    // fread_buffer_len unit is sizeof(int16_t)
+        if (fread_len < fread_buffer_len * sizeof(int16_t)) {
+          chain_tables[i].next = NULL;
+          end_flag = 1;
+        }
+        size_t decoded_bytes = 
+          nas_adpcm_decode_buffer(&nas_adpcm_decoder, fread_buffer, fread_len, 
+            chain_tables[i].buffer, adpcm_encoder.buffer_bytes / sizeof(int16_t)) * sizeof(int16_t);
+        chain_tables[i].buffer_bytes = decoded_bytes;
+
       } else if (decode_mode == DECODE_MODE_RESAMPLE) {
+
         // PCM to ADPCM encode with PCM8PP
         size_t fread_len = fread(fread_buffer, 2, fread_buffer_len, fp);  
         if (fread_len < fread_buffer_len) {
@@ -468,7 +516,9 @@ try:
         size_t resampled_len = adpcm_resample(&adpcm_encoder, chain_tables[i].buffer,
                                               fread_buffer, fread_len, pcm_freq, pcm_channels, pcm_gain);
         chain_tables[i].buffer_bytes = resampled_len * sizeof(int16_t);
+
       } else {
+
         // PCM through (no encoding) with PCM8PP
         size_t fread_len = fread(chain_tables[i].buffer, 1, adpcm_encoder.buffer_bytes, fp);
         if (fread_len < adpcm_encoder.buffer_bytes) {
@@ -476,11 +526,13 @@ try:
           end_flag = 1;
         }
         chain_tables[i].buffer_bytes = fread_len;
+
       }
 
     } else if (encode_mode == ENCODE_MODE_PCM8A) {
 
       if (decode_mode == DECODE_MODE_MP3) {
+
         // MP3 decode and ADPCM encode with PCM8A
         size_t resampled_len;
         if (mp3_decode(&mp3_decoder, chain_tables[i].buffer, adpcm_encoder.buffer_bytes / sizeof(int16_t), adpcm_output_freq, &resampled_len) != 0) {
@@ -492,7 +544,21 @@ try:
           chain_tables[i].next = NULL;
           end_flag = 1;
         }
+
+      } else if (decode_mode == DECODE_MODE_NAS_ADPCM) {
+
+        // NAS ADPCM decode and ADPCM encode with PCM8A
+        size_t fread_len = fread(fread_buffer, 1, fread_buffer_len * sizeof(int16_t), fp);  
+        if (fread_len < fread_buffer_len * sizeof(int16_t)) {
+          chain_tables[i].next = NULL;
+          end_flag = 1;
+        }
+        nas_adpcm_decode(&nas_adpcm_decoder, fread_buffer, fread_len);
+        size_t resampled_bytes = nas_adpcm_resample(&nas_adpcm_decoder, chain_tables[i].buffer, pcm_gain) * sizeof(int16_t);
+        chain_tables[i].buffer_bytes = resampled_bytes;
+
       } else if (decode_mode == DECODE_MODE_RESAMPLE) {
+
         // PCM to ADPCM encode with PCM8A
         size_t fread_len = fread(fread_buffer, 2, fread_buffer_len, fp);  
         if (fread_len < fread_buffer_len) {
@@ -502,6 +568,7 @@ try:
         size_t resampled_len = adpcm_resample(&adpcm_encoder, chain_tables[i].buffer,
                                               fread_buffer, fread_len, pcm_freq, pcm_channels, pcm_gain);
         chain_tables[i].buffer_bytes = resampled_len * sizeof(int16_t);
+
       } else {
         printf("error: unknown decode mode for PCM8A.");
         goto catch;
@@ -568,14 +635,8 @@ try:
 
   } else if (pcm8_type == PCM8_TYPE_PCM8A && encode_mode == ENCODE_MODE_PCM8A) {
 
-    // PCM8A encoding mode
-//    int16_t pcm8a_channels = 1;
-//    int16_t pcm8a_bytes_interrupt = 8;
-//    int16_t pcm8a_max_volume = 0xa0;
-//    int16_t pcm8a_min_volume = 0x40;
-//    uint32_t pcm8a_sys_info = (pcm8a_channels << 24 ) | (pcm8a_bytes_interrupt << 16) | (pcm8a_max_volume << 8) | pcm8a_min_volume;
-//    pcm8a_set_system_information(pcm8a_sys_info);
-    pcm8a_set_polyphonic_mode(1);   // must use polyphonic mode for 16bit PCM use
+    // must use polyphonic mode for 16bit PCM use
+    pcm8a_set_polyphonic_mode(1);   
  
     int16_t pcm8a_volume = pcm8_volume;
     int16_t pcm8a_pan = 0x03;
@@ -735,7 +796,21 @@ try:
             end_flag = 1;
           }
 
+        } else if (decode_mode == DECODE_MODE_NAS_ADPCM) {
+
+          // NAS ADPCM decode and PCM through (no resample, no encoding) with PCM8PP
+          size_t fread_len = fread(fread_buffer, 1, fread_buffer_len * sizeof(int16_t), fp);
+          if (fread_len < fread_buffer_len * sizeof(int16_t)) {
+            cta->next = NULL;
+            end_flag = 1;
+          }
+          size_t decoded_bytes = 
+            nas_adpcm_decode_buffer(&nas_adpcm_decoder, fread_buffer, fread_len, 
+              cta->buffer, adpcm_encoder.buffer_bytes / sizeof(int16_t)) * sizeof(int16_t);
+          cta->buffer_bytes = decoded_bytes;
+
         } else if (decode_mode == DECODE_MODE_RESAMPLE) {
+
           // ADPCM encoding with PCM8PP
           size_t fread_len = fread(fread_buffer, 2, fread_buffer_len, fp);  
           if (fread_len < fread_buffer_len) {
@@ -745,7 +820,9 @@ try:
           size_t resampled_len = adpcm_resample(&adpcm_encoder, cta->buffer, 
                                                 fread_buffer, fread_len, pcm_freq, pcm_channels, pcm_gain);
           cta->buffer_bytes = resampled_len * sizeof(int16_t);
+
         } else {
+
           // PCM through (no encoding) with PCM8PP
           size_t fread_len = fread(cta->buffer, 1, adpcm_encoder.buffer_bytes, fp);
           if (fread_len < adpcm_encoder.buffer_bytes) {
@@ -753,6 +830,7 @@ try:
             end_flag = 1;
           }
           cta->buffer_bytes = fread_len;
+
         }
 
       } else if (encode_mode == ENCODE_MODE_PCM8A) {
@@ -770,6 +848,18 @@ try:
             cta->next = NULL;
             end_flag = 1;
           }
+
+        } else if (decode_mode == DECODE_MODE_NAS_ADPCM) {
+
+          // NAS ADPCM decode and ADPCM encode with PCM8A
+          size_t fread_len = fread(fread_buffer, 1, fread_buffer_len * sizeof(int16_t), fp);  
+          if (fread_len < fread_buffer_len * sizeof(int16_t)) {
+            cta->next = NULL;
+            end_flag = 1;
+          }
+          nas_adpcm_decode(&nas_adpcm_decoder, fread_buffer, fread_len);
+          size_t resampled_bytes = nas_adpcm_resample(&nas_adpcm_decoder, cta->buffer, pcm_gain) * sizeof(int16_t);
+          cta->buffer_bytes = resampled_bytes;
 
         } else {
 
@@ -852,7 +942,14 @@ catch:
   adpcm_close(&adpcm_encoder);
 
   // close mp3 decoder
-  mp3_close(&mp3_decoder);
+  if (decode_mode == DECODE_MODE_MP3) {
+    mp3_close(&mp3_decoder);
+  }
+
+  // close nas adpcm decoder
+  if (decode_mode == DECODE_MODE_NAS_ADPCM) {
+    nas_adpcm_close(&nas_adpcm_decoder);
+  }
 
   // enable pcm8 polyphonic mode
   if (pcm8_type != PCM8_TYPE_NONE) {

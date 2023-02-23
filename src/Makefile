@@ -26,7 +26,7 @@ TARGET_FILE = MP3EXP.X
 DOCUMENT_FILE = MP3EXP.DOC
 
 # Distribution package 
-PACKAGE_FILE = ../MPEXP065.ZIP
+PACKAGE_FILE = ../MPEXP068.ZIP
 
 # ヘッダ検索パス
 INCLUDE_FLAGS = -I${XDEV68K_DIR}/include/xc -I${XDEV68K_DIR}/include/xdev68k -I${XDEV68K_DIR}/include/mad -I${XDEV68K_DIR}/include/zlib
@@ -39,13 +39,13 @@ CFLAGS = $(COMMON_FLAGS) -fno-conserve-stack -Wno-builtin-declaration-mismatch -
 				-D_TIME_T_DECLARED -D_CLOCK_T_DECLARED
 
 # *.c ソースファイル
-C_SRCS = crtc.c himem.c nanojpeg.c buffer.c png.c pcm8.c pcm8a.c pcm8pp.c adpcm.c mp3.c main.c
+C_SRCS = crtc.c himem.c nanojpeg.c buffer.c png.c pcm8.c pcm8a.c pcm8pp.c adpcm.c nas_adpcm.c mp3.c main.c
 
 # *.s ソースファイル
-ASM_SRCS = utf16_cp932.s
+ASM_SRCS = utf16_cp932.s adpcmlib.s
 
 # *.h source files
-HEADER_SRCS = keyboard.h utf16_cp932.h crtc.h himem.h nanojpeg.h buffer.h png.h pcm8.h pcm8a.h pcm8pp.h adpcm.h mp3.h mp3exp.h
+HEADER_SRCS = keyboard.h utf16_cp932.h macro.h crtc.h himem.h nanojpeg.h buffer.h png.h pcm8.h pcm8a.h pcm8pp.h adpcm.h nas_adpcm.h mp3.h mp3exp.h
 
 # リンク対象のライブラリファイル
 # link custom libmad objects compiled with OPT_SPEED option instead of normal libmad.a

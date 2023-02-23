@@ -5,6 +5,7 @@ ADPCM/PCM/MP3 player for X680x0/Human68k
 
  - X68K(MSM6258V) ADPCM 15.6kHz mono (.PCM)
  - 16bit符号付き big endian raw PCM (.S32/.S44/.S48/.M32/.M44/.M48)
+ - 16bit符号付き NAS ADPCM (.A32/.A44/.A48)
  - MP3 (.MP3)
 
 MP3のアルバムアート表示(JPEG/PNG)に対応しています。
@@ -74,6 +75,10 @@ XM6 typeG
 
 S44 (44.1kHz 16bit PCM stereo) の再生には最低 X68000 24MHz が必要です。実機ではX68030以上を推奨します。PCMファイルは逐次ディスクから読み取ります。
 
+* NAS ADPCMファイルの再生
+
+A44 (44.1kHz 16bit PCM stereo ADPCM) の再生は S44と同等のパワーが必要です。ディスク読み込み負担が減る代わりにデコードの負担で相殺されます。
+
 * MP3ファイル
 
 XEiJエミュレータでの検証では X68000-600MHz, X68030-500MHz, 060turbo-50MHz が必要です。
@@ -130,7 +135,9 @@ MP3デコードライブラリとして libmad 0.15.1b をx68k向けにコンパ
 
 JPEGデコードライブラリとして Martin J. Fiedler氏の nanojpeg を改造したものを利用させて頂いています。nanojpeg は MIT ライセンスです。
 
-PNGデコードのために zlib をx68k向けにコンパイルしたものを利用させて頂いています。zlibのライセンスはzlibライセンス(GPLに似ているがソースコード開示要求条項はない)です。
+PNGデコードのために zlib をx68k向けにコンパイルしたものを利用させて頂いています。zlibのライセンスはzlibライセンスです。
+
+NAS ADPCM形式は Otankonas氏が 1995年に提案された X680x0 向け 16bit 符号付き PCM向けの独自ADPCMエンコード・デコードアルゴリズムおよびその実装ライブラリです。氏のライブラリコードの一部を独自にデバックしたものを利用させて頂いています。
 
 以上により MP3EXP のライセンスは libmad に準じた GPLv2 です。
 
@@ -147,11 +154,13 @@ PNGデコードのために zlib をx68k向けにコンパイルしたものを�
 * PCM8PP.X thanks to たにぃさん
 * TS16DRVp.X thanks to M.Kamadaさん / はうさん / みゆ🌹ฅ^•ω•^ฅ さん
 * MicroPython.X thanks to YuNKさん / daaさん
+* ADPCMLIB thanks to Otankonas さん
 
 ---
 
 ### History
 
+* 0.6.8 (2023/02/23) ... なす式ADPCM(.a44)の再生に対応した
 * 0.6.5 (2023/02/22) ... アルバムアートのハーフサイズをデフォルトにした
 * 0.6.4 (2023/02/22) ... -u指定時にハイメモリドライバの登録チェックをするようにした
 * 0.6.3 (2023/02/22) ... -bオプションの最大値を32から128にした
