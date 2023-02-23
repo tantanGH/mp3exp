@@ -96,10 +96,16 @@ void mp3_close(MP3_DECODE_HANDLE* decode) {
 //
 //  utf-16 to cp932
 //
-static void convert_utf16_to_cp932(uint8_t* cp932_buffer, uint16_t* utf16_buffer, size_t utf16_len) {
-  int16_t endian = utf16_buffer[0] == 0xfffe ? 0 : 1;   // 0:little, 1:big
+static void convert_utf16_to_cp932(uint8_t* cp932_buffer, uint8_t* utf16_buffer, size_t utf16_bytes) {
+
+  // CAUTION: utf16_buffer may be odd address and word access will fail on 68000 machines
+
+  int16_t endian = utf16_buffer[0] == 0xfe ? 1 : 0;   // 0:little, 1:big
+  size_t utf16_len = ( utf16_bytes - 2 ) / 2;
+
   for (int16_t i = 0; i < utf16_len; i++) {
-    uint16_t utf16_code = ( endian == 0 ) ? ( ( utf16_buffer[i] & 0xff ) << 8 ) | ( utf16_buffer[i] >> 8 ) : utf16_buffer[i];
+    uint16_t utf16_code = ( endian == 0 ) ? ( utf16_buffer[ 2 + i * 2 + 1 ] << 8 ) | ( utf16_buffer[ 2 + i * 2 + 0 ] ) : 
+                                            ( utf16_buffer[ 2 + i * 2 + 0 ] << 8 ) | ( utf16_buffer[ 2 + i * 2 + 1 ] );
     uint16_t cp932_code = utf16_to_cp932_map[ utf16_code ];
     size_t cp932_len = strlen(cp932_buffer);
     cp932_buffer[ cp932_len ] = cp932_code >> 8;
@@ -169,15 +175,14 @@ int32_t mp3_parse_tags(MP3_DECODE_HANDLE* decode, int16_t pic_brightness, int16_
       // title
       uint8_t* frame_data = himem_malloc(frame_size, 0);
       fread(frame_data, 1, frame_size, fp);
-
       if (frame_data[0] == 0x00) {              // ISO-8859-1
         decode->mp3_title = frame_data + 1;
       } else if (frame_data[0] == 0x01) {       // UTF-16 with BOM
         decode->mp3_title = himem_malloc(frame_size - 3 + 1, 0);
         decode->mp3_title[0] = '\0';
-        convert_utf16_to_cp932(decode->mp3_title, (uint16_t*)(frame_data + 1), (frame_size - 1)/2);
+        convert_utf16_to_cp932(decode->mp3_title, frame_data + 1, frame_size - 1);
       }   
-      himem_free(frame_data, 0);   
+      himem_free(frame_data, 0);
 
     } else if (memcmp(frame_header, "TPE1", 4) == 0) {
 
@@ -190,7 +195,7 @@ int32_t mp3_parse_tags(MP3_DECODE_HANDLE* decode, int16_t pic_brightness, int16_
       } else if (frame_data[0] == 0x01) {       // UTF-16 with BOM
         decode->mp3_artist = himem_malloc(frame_size - 3 + 1, 0);
         decode->mp3_artist[0] = '\0';
-        convert_utf16_to_cp932(decode->mp3_artist, (uint16_t*)(frame_data + 1), (frame_size - 1)/2);
+        convert_utf16_to_cp932(decode->mp3_artist, frame_data + 1, frame_size - 1);
       }
       himem_free(frame_data, 0);   
 
@@ -205,7 +210,7 @@ int32_t mp3_parse_tags(MP3_DECODE_HANDLE* decode, int16_t pic_brightness, int16_
       } else if (frame_data[0] == 0x01) {       // UTF-16 with BOM
         decode->mp3_album = himem_malloc(frame_size - 3 + 1, 0);
         decode->mp3_album[0] = '\0';
-        convert_utf16_to_cp932(decode->mp3_album, (uint16_t*)(frame_data + 1), (frame_size - 1)/2);
+        convert_utf16_to_cp932(decode->mp3_album, frame_data + 1, frame_size - 1);
       }
       himem_free(frame_data, 0);
 
