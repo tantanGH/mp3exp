@@ -239,11 +239,15 @@ int32_t pcm8a_keepchk() {
     eye_catch1[i] = B_BPEEK(eye_catch_addr + i);
   }
 
+  uint8_t pcm8a_version[3];
+  for (int16_t i = 0; i < 3; i++) {
+    pcm8a_version[i] = B_BPEEK(eye_catch_addr + i + 5);
+  }
+
   uint8_t eye_catch2[8];
   for (int16_t i = 0; i < 8; i++) {
     eye_catch2[i] = B_BPEEK(eye_catch_addr + i + 8);
   }
 
-  return (memcmp(eye_catch1, "PCM8A", 5) == 0 && memcmp(eye_catch2, "PCM8/048", 8) == 0) ? 1 : 0;
-
+  return (memcmp(eye_catch1, "PCM8A", 5) == 0 && memcmp(pcm8a_version, "100", 3) >= 0 && memcmp(eye_catch2, "PCM8/048", 8) == 0 ) ? 1 : 0;
 }
