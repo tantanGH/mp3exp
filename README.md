@@ -10,7 +10,7 @@ ADPCM/PCM/MP3 player for X680x0/Human68k
 
 MP3のアルバムアート表示(JPEG/PNG)に対応しています。
 
-<img src='images/mp3exp5.png' width='800'/>
+<img src='images/mp3exp6.png' width='800'/>
 
 出力デバイスは内蔵ADPCMまたはMercury-Unit(V3.5以上)になります。組み込むPCM8ドライバによって決まります。
 
@@ -119,7 +119,7 @@ XM6gエミュレータでの検証では MPUノーウェイト オプション�
 
 `-v` オプションでPCM8A.X/PCM8PP.X使用時の音量を指定します。デフォルトは8です。
 
-<img src='images/mp3exp6.png' width='800'/>
+<img src='images/mp3exp4.png' width='800'/>
 
 ---
 
@@ -127,7 +127,7 @@ XM6gエミュレータでの検証では MPUノーウェイト オプション�
 
 ソースツリーの中にある `mp3shuffle.py` は [MicroPython for X680x0](https://github.com/yunkya2/micropython-x68k) 上で動作するシャッフル再生ツールです。カレントディレクトリにあるMP3ファイルをランダムに選択して再生します。コマンドライン引数で何ループするかを指定できます。
 
-<img src='images/mp3exp4.png' width='800'/>
+<img src='images/mp3exp7.png' width='800'/>
 
 ---
 
