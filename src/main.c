@@ -495,12 +495,12 @@ try:
       } else if (decode_mode == DECODE_MODE_NAS_ADPCM) {
 
         // NAS ADPCM decode and PCM through (no resample, no encoding) with PCM8PP
-        size_t fread_len = fread(fread_buffer, 1, fread_buffer_len * sizeof(int16_t), fp);    // fread_buffer_len unit is sizeof(int16_t)
-        if (fread_len < fread_buffer_len * sizeof(int16_t)) {
+        size_t fread_len = fread(fread_buffer, 1, fread_buffer_len, fp);
+        if (fread_len < fread_buffer_len) {
           chain_tables[i].next = NULL;
           end_flag = 1;
         }
-        size_t decoded_bytes = 
+        size_t decoded_bytes =
           nas_adpcm_decode_buffer(&nas_adpcm_decoder, fread_buffer, fread_len, 
             chain_tables[i].buffer, adpcm_encoder.buffer_bytes / sizeof(int16_t)) * sizeof(int16_t);
         chain_tables[i].buffer_bytes = decoded_bytes;
@@ -799,8 +799,8 @@ try:
         } else if (decode_mode == DECODE_MODE_NAS_ADPCM) {
 
           // NAS ADPCM decode and PCM through (no resample, no encoding) with PCM8PP
-          size_t fread_len = fread(fread_buffer, 1, fread_buffer_len * sizeof(int16_t), fp);
-          if (fread_len < fread_buffer_len * sizeof(int16_t)) {
+          size_t fread_len = fread(fread_buffer, 1, fread_buffer_len, fp);
+          if (fread_len < fread_buffer_len) {
             cta->next = NULL;
             end_flag = 1;
           }
@@ -852,8 +852,8 @@ try:
         } else if (decode_mode == DECODE_MODE_NAS_ADPCM) {
 
           // NAS ADPCM decode and ADPCM encode with PCM8A
-          size_t fread_len = fread(fread_buffer, 1, fread_buffer_len * sizeof(int16_t), fp);  
-          if (fread_len < fread_buffer_len * sizeof(int16_t)) {
+          size_t fread_len = fread(fread_buffer, 1, fread_buffer_len, fp);  
+          if (fread_len < fread_buffer_len) {
             cta->next = NULL;
             end_flag = 1;
           }

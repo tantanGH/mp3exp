@@ -42,7 +42,7 @@ CFLAGS = $(COMMON_FLAGS) -fno-conserve-stack -Wno-builtin-declaration-mismatch -
 C_SRCS = crtc.c himem.c nanojpeg.c buffer.c png.c pcm8.c pcm8a.c pcm8pp.c adpcm.c nas_adpcm.c mp3.c main.c
 
 # *.s ソースファイル
-ASM_SRCS = utf16_cp932.s adpcmlib.s
+ASM_SRCS = utf16_cp932.s nas_adpcmlib.s
 
 # *.h source files
 HEADER_SRCS = keyboard.h utf16_cp932.h macro.h crtc.h himem.h nanojpeg.h buffer.h png.h pcm8.h pcm8a.h pcm8pp.h adpcm.h nas_adpcm.h mp3.h mp3exp.h
