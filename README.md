@@ -94,7 +94,7 @@ XM6gエミュレータでの検証では MPUノーウェイト オプション�
     usage: mp3exp [options] <input-file[.pcm|.s32|.s44|.s48|.m32|.m44|.m48|.mp3]>
     options:
          -a    ... do not use PCM8A.X for ADPCM encoding
-         -b<n> ... buffer size [x 64KB] (2-128,default:4)
+         -b<n> ... buffer size [x 64KB] (2-96,default:4)
          -u    ... use 060turbo/ts-6be16 high memory for buffering
          -l[n] ... loop count (none:infinite, default:1)
          -q[n] ... mp3 quality (0:high, 1:normal, default:1)
@@ -162,6 +162,7 @@ NAS ADPCM形式は Otankonas氏が 1995年に提案された X680x0 向け 16bit
 
 ### History
 
+* 0.6.9a (2023/02/23) ... -bオプションで32より大きい値を入れるとバスエラーが出ていたのを修正
 * 0.6.9 (2023/02/23) ... 68000MPUでMP3再生時にアドレスエラーが出ていたのを修正
 * 0.6.8 (2023/02/23) ... なす式ADPCM(.a44)の再生に対応した
 * 0.6.5 (2023/02/22) ... アルバムアートのハーフサイズをデフォルトにした
