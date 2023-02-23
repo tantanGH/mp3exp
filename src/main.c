@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stat.h>
 #include <doslib.h>
 #include <iocslib.h>
 #include "keyboard.h"
@@ -37,7 +38,7 @@ static void abort_application() {
 
 // show help message
 static void show_help_message() {
-  printf("usage: mp3exp [options] <input-file[.pcm|.s32|.s44|.s48|.m32|.m44|.m48|.a32|.a44|.a48|.mp3]>\n");
+  printf("usage: mp3exp [options] <input-file[.pcm|.s32|.s44|.s48|.m32|.m44|.m48|.x32|.x44|.x48|.mp3]>\n");
   printf("options:\n");
   printf("     -a    ... use MP3EXP for ADPCM encoding\n");
   printf("     -b<n> ... buffer size [x 64KB] (2-96,default:4)\n");
@@ -47,6 +48,7 @@ static void show_help_message() {
   printf("     -t[n] ... mp3 album art display brightness (1-100, default:off)\n");
   printf("     -x    ... mp3 album art display full size\n");
   printf("     -v[n] ... pcm8a/pcm8pp volume (1-15, default:8)\n");
+  printf("     -c    ... do not use .s44/.x44 as mp3 cache\n");
   printf("     -h    ... show help message\n");
 }
 
@@ -69,6 +71,7 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
   int16_t mp3_quality = 1;
   int16_t mp3_pic_brightness = 0;
   int16_t mp3_pic_half_size = 1;
+  int16_t mp3_cache_unuse = 0;
   int16_t pcm8_volume = 8;
   for (int16_t i = 1; i < argc; i++) {
     if (argv[i][0] == '-' && strlen(argv[i]) >= 2) {
@@ -102,6 +105,8 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
         }
       } else if (argv[i][1] == 'x') {
         mp3_pic_half_size = 0;
+      } else if (argv[i][1] == 'c') {
+        mp3_cache_unuse = 1;
       } else if (argv[i][1] == 'v') {
         pcm8_volume = atoi(argv[i]+2);
         if (pcm8_volume < 1 || pcm8_volume > 15 || strlen(argv[i]) < 3) {
@@ -125,6 +130,10 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
         goto exit;
       }
     } else {
+      if (pcm_file_name != NULL) {
+        printf("error: multiple files are not supported.\n");
+        goto exit;
+      }
       pcm_file_name = argv[i];
     }
   }
@@ -137,12 +146,16 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
   // input pcm file name and extension
   uint8_t* pcm_file_exp = pcm_file_name + strlen(pcm_file_name) - 4;
 
+  // cached pcm file name
+  static uint8_t pcm_cache_file_name[ MAX_PATH_LEN ];
+
   // input format check
   int32_t pcm_freq = 15625;
   int16_t pcm_channels = 1;
   int16_t pcm_gain = encode_with_self ? 1 : 16; 
-  int32_t decode_mode = DECODE_MODE_NONE;
-  int32_t encode_mode = ENCODE_MODE_NONE;
+  int16_t decode_mode = DECODE_MODE_NONE;
+  int16_t encode_mode = ENCODE_MODE_NONE;
+  int16_t mp3_cache_use = 0;
   if (stricmp(".pcm", pcm_file_exp) == 0) {
     pcm_freq = 15625;                 // fixed
     pcm_channels = 1;
@@ -179,17 +192,32 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
     pcm_channels = 1;
     decode_mode = DECODE_MODE_RESAMPLE;
     encode_mode = ENCODE_MODE_SELF;
-  } else if (stricmp(".a32", pcm_file_exp) == 0) {
+  } else if (stricmp(".x32", pcm_file_exp) == 0) {
     pcm_freq = 32000;
     pcm_channels = 2;
     decode_mode = DECODE_MODE_NAS_ADPCM;
     encode_mode = ENCODE_MODE_SELF;
-  } else if (stricmp(".a44", pcm_file_exp) == 0) {
+  } else if (stricmp(".x44", pcm_file_exp) == 0) {
     pcm_freq = 44100;
     pcm_channels = 2;
     decode_mode = DECODE_MODE_NAS_ADPCM;
     encode_mode = ENCODE_MODE_SELF;
-  } else if (stricmp(".a48", pcm_file_exp) == 0) {
+  } else if (stricmp(".x48", pcm_file_exp) == 0) {
+    pcm_freq = 48000;
+    pcm_channels = 2;
+    decode_mode = DECODE_MODE_NAS_ADPCM;
+    encode_mode = ENCODE_MODE_SELF;
+  } else if (stricmp(".y32", pcm_file_exp) == 0) {
+    pcm_freq = 32000;
+    pcm_channels = 2;
+    decode_mode = DECODE_MODE_NAS_ADPCM;
+    encode_mode = ENCODE_MODE_SELF;
+  } else if (stricmp(".y44", pcm_file_exp) == 0) {
+    pcm_freq = 44100;
+    pcm_channels = 2;
+    decode_mode = DECODE_MODE_NAS_ADPCM;
+    encode_mode = ENCODE_MODE_SELF;
+  } else if (stricmp(".y48", pcm_file_exp) == 0) {
     pcm_freq = 48000;
     pcm_channels = 2;
     decode_mode = DECODE_MODE_NAS_ADPCM;
@@ -199,6 +227,32 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
     pcm_channels = -1;
     decode_mode = DECODE_MODE_MP3;
     encode_mode = ENCODE_MODE_PCM8A;
+
+    // check s44/a44 file existence for cache use
+    if (!mp3_cache_unuse) {
+      struct stat stat_buf;
+      strcpy(pcm_cache_file_name, pcm_file_name);
+      strcpy(pcm_cache_file_name + strlen(pcm_cache_file_name) - 4, ".s44");
+      if (stat(pcm_cache_file_name, &stat_buf) == 0) {
+        pcm_freq = 44100;
+        pcm_channels = 2;
+        decode_mode = DECODE_MODE_RESAMPLE;
+        mp3_cache_use = 1;
+        mp3_quality = 0;
+      } else {
+        strcpy(pcm_cache_file_name + strlen(pcm_cache_file_name) - 4, ".x44");
+        if (stat(pcm_cache_file_name, &stat_buf) == 0) {
+          pcm_freq = 44100;
+          pcm_channels = 2;
+          decode_mode = DECODE_MODE_NAS_ADPCM;
+          mp3_cache_use = 1;
+          mp3_quality = 0;
+        } else {
+          pcm_cache_file_name[0] = '\0';
+        }
+      }
+    }
+
   } else {
     printf("error: unknown format file (%s).\n", pcm_file_name);
     goto exit;
@@ -287,7 +341,7 @@ try:
   }
 
   // init mp3 decoder
-  if (decode_mode == DECODE_MODE_MP3) {
+  if (mp3_cache_use || decode_mode == DECODE_MODE_MP3) {
     if (mp3_init(&mp3_decoder) != 0) {
       printf("error: MP3 decoder initialization error.\n");
       goto catch;    
@@ -318,7 +372,7 @@ try:
 
   // read the first 10 bytes of the MP3 file
   size_t skip_offset = 0;
-  if (decode_mode == DECODE_MODE_MP3) {
+  if (mp3_cache_use || decode_mode == DECODE_MODE_MP3) {
     printf("\rparsing ID3v2 tag and album art...");
     int32_t ofs = mp3_parse_tags(&mp3_decoder, mp3_pic_brightness, mp3_pic_half_size, fp);
     if (ofs < 0) {
@@ -326,6 +380,17 @@ try:
       goto catch;
     }
     skip_offset = ofs;
+  }
+
+  // in case mp3 cache mode, reopen the file
+  if (mp3_cache_use) {
+    fclose(fp);
+    fp = fopen(pcm_cache_file_name, "rb");
+    if (fp == NULL) {
+      printf("error: cannot open pcm/mp3 file (%s).\n", pcm_file_name);
+      goto catch;
+    }
+    skip_offset = 0;
   }
 
   // check file size
@@ -404,7 +469,7 @@ try:
       printf("PCM length    : %4.2f [sec]\n", (float)pcm_file_size / pcm_1sec_size);
     }
 
-    if (decode_mode == DECODE_MODE_NAS_ADPCM) {
+    if (!mp3_cache_use && decode_mode == DECODE_MODE_NAS_ADPCM) {
       printf("PCM frequency : %d [Hz]\n", pcm_freq);
       printf("PCM channels  : %s\n", pcm_channels == 1 ? "mono" : "stereo");
     }
@@ -427,7 +492,7 @@ try:
     }
 
     // describe MP3 decoding rate
-    if (decode_mode == DECODE_MODE_MP3) {
+    if (mp3_cache_use || decode_mode == DECODE_MODE_MP3) {
       printf("MP3 quality   : %s\n",
         mp3_quality == 2 ? "low" :
         mp3_quality == 1 ? "normal" : "high");
