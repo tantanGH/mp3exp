@@ -6,6 +6,7 @@
 #include <doslib.h>
 #include <iocslib.h>
 #include "keyboard.h"
+#include "crtc.h"
 #include "himem.h"
 #include "pcm8.h"
 #include "pcm8a.h"
@@ -14,7 +15,6 @@
 #include "nas_adpcm.h"
 #include "mp3.h"
 #include "mp3exp.h"
-#include "crtc.h"
 
 //#define DEBUG
 
@@ -42,9 +42,9 @@ static void show_help_message() {
   printf("options:\n");
   printf("     -a    ... use MP3EXP for ADPCM encoding\n");
   printf("     -b<n> ... buffer size [x 64KB] (2-96,default:4)\n");
-  printf("     -u    ... use 060turbo/ts-6be16 high memory for buffering\n");
+  printf("     -u    ... use 060turbo/TS-6BE16 high memory for buffering\n");
   printf("     -l[n] ... loop count (none:infinite, default:1)\n");
-  printf("     -q[n] ... mp3 quality (0:high, 1:normal, default:1)\n");
+  printf("     -q[n] ... mp3 quality (0:high, 1:normal, 2:low, default:1)\n");
   printf("     -t[n] ... mp3 album art display brightness (1-100, default:off)\n");
   printf("     -x    ... mp3 album art display full size\n");
   printf("     -v[n] ... pcm8a/pcm8pp volume (1-15, default:8)\n");
@@ -93,7 +93,7 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
         use_high_memory = 1;
       } else if (argv[i][1] == 'q') {
         mp3_quality = atoi(argv[i]+2);
-        if (mp3_quality < 0 || mp3_quality > 1 || strlen(argv[i]) < 3) {
+        if (mp3_quality < 0 || mp3_quality > 2 || strlen(argv[i]) < 3) {
           show_help_message();
           goto exit;
         }
@@ -228,6 +228,11 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
     decode_mode = DECODE_MODE_MP3;
     encode_mode = ENCODE_MODE_PCM8A;
 
+    // in case of quarter frequency mode, use 10.417kHz internal ADPCM
+    if (mp3_quality == 2) {
+      adpcm_output_freq = 10417;
+    }
+
     // check s44/a44 file existence for cache use
     if (!mp3_cache_unuse) {
       struct stat stat_buf;
@@ -289,10 +294,10 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
       if (decode_mode == DECODE_MODE_RESAMPLE) {
         decode_mode = DECODE_MODE_NONE;
       }
-      if (decode_mode == DECODE_MODE_MP3 && mp3_quality == 2) {
-        printf("error: MP3 with PCM8PP does not support low quality mode.\n");
-        goto exit;
-      }
+      //if (decode_mode == DECODE_MODE_MP3 && mp3_quality == 2) {
+      //  printf("error: MP3 with PCM8PP does not support low quality mode.\n");
+      //  goto exit;
+      //}
     } else if (pcm8_type == PCM8_TYPE_PCM8A) {
       encode_mode = ENCODE_MODE_PCM8A;
     } else {
@@ -585,12 +590,12 @@ try:
       } else {
 
         // PCM through (no encoding) with PCM8PP
-        size_t fread_len = fread(chain_tables[i].buffer, 1, adpcm_encoder.buffer_bytes, fp);
-        if (fread_len < adpcm_encoder.buffer_bytes) {
+        size_t fread_len = fread(chain_tables[i].buffer, 2, adpcm_encoder.buffer_bytes/2, fp);
+        if (fread_len < adpcm_encoder.buffer_bytes/2) {
           chain_tables[i].next = NULL;
           end_flag = 1;
         }
-        chain_tables[i].buffer_bytes = fread_len;
+        chain_tables[i].buffer_bytes = fread_len * 2;
 
       }
 
@@ -600,7 +605,7 @@ try:
 
         // MP3 decode and ADPCM encode with PCM8A
         size_t resampled_len;
-        if (mp3_decode(&mp3_decoder, chain_tables[i].buffer, adpcm_encoder.buffer_bytes / sizeof(int16_t), adpcm_output_freq, &resampled_len) != 0) {
+        if (mp3_decode_resample(&mp3_decoder, chain_tables[i].buffer, adpcm_encoder.buffer_bytes / sizeof(int16_t), adpcm_output_freq, &resampled_len) != 0) {
           printf("\rerror: mp3 decode error.\x1b[0K");
           goto catch;
         }
@@ -687,16 +692,18 @@ try:
                           pcm_freq == 32000 && pcm_channels == 1 ? 0x0c :
                           pcm_freq == 44100 && pcm_channels == 1 ? 0x0d :
                           pcm_freq == 48000 && pcm_channels == 1 ? 0x0e :
+                          (pcm_freq == 8000 || pcm_freq == 11025 || pcm_freq == 12000) && pcm_channels == 1 ? 0x0f :
                           pcm_freq == 16000 && pcm_channels == 2 ? 0x19 :
                           pcm_freq == 22050 && pcm_channels == 2 ? 0x1a :
                           pcm_freq == 24000 && pcm_channels == 2 ? 0x1b :
                           pcm_freq == 32000 && pcm_channels == 2 ? 0x1c :
                           pcm_freq == 44100 && pcm_channels == 2 ? 0x1d :
                           pcm_freq == 48000 && pcm_channels == 2 ? 0x1e :
+                          (pcm_freq == 8000 || pcm_freq == 11025 || pcm_freq == 12000) && pcm_channels == 2 ? 0x1f :
                           adpcm_output_freq < 8000  ? 0x02 :
                           adpcm_output_freq < 11000 ? 0x03 : 0x04;
     uint32_t pcm8pp_channel_mode = ( pcm8pp_volume << 16 ) | ( pcm8pp_freq << 8 ) | pcm8pp_pan;
-    pcm8pp_play_linked_array_chain(0, pcm8pp_channel_mode, 1, 0, &(chain_tables[0]));
+    pcm8pp_play_linked_array_chain(0, pcm8pp_channel_mode, 1, pcm_freq * 256, &(chain_tables[0]));
 
   } else if (pcm8_type == PCM8_TYPE_PCM8A && encode_mode == ENCODE_MODE_PCM8A) {
 
@@ -752,22 +759,19 @@ try:
         break;
       }
     }
- 
+
     // exit if not playing
     if (encode_mode == ENCODE_MODE_PCM8PP) {
       if (pcm8pp_get_data_length(0) == 0) {
-        // dummy wait to make sure it (500 msec) because pcm8pp may return 0 in case 48000Hz mode
-        for (int32_t t0 = ONTIME(); ONTIME() < t0 + 50;) {}
-        if (pcm8pp_get_data_length(0) == 0) {
-          if (end_flag) { 
-            printf("\rfinished.\x1b[0K");
-            rc = 0;
-          } else {
-            printf("\rerror: buffer underrun detected.\x1b[0K");
-            rc = 1;
-          }
-          break;
+      //if (B_BPEEK(REG_DMAC_CH2_CSR) & 0x80) {   // ch2 dmac operation complete?
+        if (end_flag) { 
+          printf("\rfinished.\x1b[0K");
+          rc = 0;
+        } else {
+          printf("\rerror: buffer underrun detected.\x1b[0K");
+          rc = 1;
         }
+        break;
       }
     } else if (encode_mode == ENCODE_MODE_PCM8A) {
       if (pcm8a_get_data_length(0) == 0) {
@@ -904,7 +908,7 @@ try:
 
           // MP3 decode and ADPCM encode
           size_t resampled_len;
-          if (mp3_decode(&mp3_decoder, cta->buffer, adpcm_encoder.buffer_bytes / sizeof(int16_t), adpcm_output_freq, &resampled_len) != 0) {
+          if (mp3_decode_resample(&mp3_decoder, cta->buffer, adpcm_encoder.buffer_bytes / sizeof(int16_t), adpcm_output_freq, &resampled_len) != 0) {
             printf("\rerror: mp3 decode error.\x1b[0K");
             goto catch;
           }

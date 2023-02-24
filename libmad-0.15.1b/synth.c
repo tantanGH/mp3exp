@@ -827,7 +827,7 @@ void synth_half(struct mad_synth *synth, struct mad_frame const *frame,
 
 /*
  * NAME:	synth->quarter()
- * DESCRIPTION:	perform half frequency PCM synthesis
+ * DESCRIPTION:	perform quarter frequency PCM synthesis
  */
 static
 void synth_quarter(struct mad_synth *synth, struct mad_frame const *frame,
@@ -854,7 +854,7 @@ void synth_quarter(struct mad_synth *synth, struct mad_frame const *frame,
       pe = phase & ~1;
       po = ((phase - 1) & 0xf) | 1;
 
-      /* calculate 16 samples */
+      /* calculate 8 samples */
 
       fe = &(*filter)[0][ phase & 1][0];
       fx = &(*filter)[0][~phase & 1][0];
@@ -885,7 +885,7 @@ void synth_quarter(struct mad_synth *synth, struct mad_frame const *frame,
 
       *pcm1++ = SHIFT(MLZ(hi, lo));
 
-      pcm2 = pcm1 + 14;
+      pcm2 = pcm1 + 6;
 
       for (sb = 1; sb < 16; ++sb) {
 	++fe;
@@ -893,7 +893,7 @@ void synth_quarter(struct mad_synth *synth, struct mad_frame const *frame,
 
 	/* D[32 - sb][i] == -D[sb][31 - i] */
 
-	if (!(sb & 3)) {
+	if ((sb % 4) == 0) {
 	  ptr = *Dptr + po;
 	  ML0(hi, lo, (*fo)[0], ptr[ 0]);
 	  MLA(hi, lo, (*fo)[1], ptr[14]);
@@ -956,7 +956,7 @@ void synth_quarter(struct mad_synth *synth, struct mad_frame const *frame,
       MLA(hi, lo, (*fo)[7], ptr[ 2]);
 
       *pcm1 = SHIFT(-MLZ(hi, lo));
-      pcm1 += 8;
+      pcm1 += 4;
 
       phase = (phase + 1) % 16;
     }
