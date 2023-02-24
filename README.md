@@ -5,7 +5,7 @@ ADPCM/PCM/MP3 player for X680x0/Human68k
 
  - X68K(MSM6258V) ADPCM 15.6kHz mono (.PCM)
  - 16bit符号付き big endian raw PCM (.S32/.S44/.S48/.M32/.M44/.M48)
- - 16bit符号付き NAS ADPCM (.X32/.X44/.X48/.Y32/.Y44/.Y48)
+ - 16bit符号付き YM2608 ADPCM (.A32/.A44/.A48/.N32/.N44/.N48)
  - MP3 (.MP3)
 
 MP3のアルバムアート表示(JPEG/PNG)に対応しています。
@@ -17,23 +17,13 @@ MP3のアルバムアート表示(JPEG/PNG)に対応しています。
 - 出力先が内蔵ADPCMの時はすべての形式がリアルタイムに内蔵ADPCM(15.6kHz,mono)の音声に変換されます。
 - 出力先がMercury-Unitの時はADPCM形式も含めたすべての形式の音声がMercury-Unitから出力されます。
 
-注意：MP3ファイルの再生はかなりのMPUパワーを必要とします。事実上エミュレータ向けのオマケです。ただし、MP3ファイルと同じフォルダに同じ名前でS44またはX44(A44)形式のファイルを置いておくと、MP3はタグとアルバムアートの参照のみに利用し、実際の再生にはS44/X44(A44)を使います。この場合であれば実機でも問題ありません。ただしX68030-25MHz程度は必要です。
+注意：MP3ファイルの再生はかなりのMPUパワーを必要とします。事実上エミュレータ向けのオマケです。ただし、MP3ファイルと同じフォルダに同じ名前でS44またはA44形式のファイルを置いておくと、MP3はタグとアルバムアートの参照のみに利用し、実際の再生にはS44/A44を使います。この場合であれば実機でも問題ありません。ただしX68030-25MHz程度は必要です。
 
 注意：このプログラムはコンバータではありません。MP3形式ファイルを ADPCM/PCM 形式に変換するには
 
 [MP3EX.X](https://github.com/tantanGH/mp3ex)
 
 の方を使ってください。
-
----
-
-### 既知の問題
-
-MP3EXP.X には現時点でいくつかの未解決の問題があります。利用上はくれぐれもご注意ください。
-
-- NAS ADPCM と Mercury Unit V4 の YM2608 ADPCM の関係
-
-.A44は NAS ADPCM としても YM2608 ADPCM としても再生できるという情報も頂いています。現時点で詳細までは把握できていません。
 
 ---
 
@@ -106,9 +96,9 @@ XEiJ は Java VM上で実行できる X68k エミュレータで、macOSでも�
 
 S44 (44.1kHz 16bit PCM stereo) の再生には最低 X68000 24MHz が必要です。実機ではX68030以上を推奨します。PCMファイルは逐次ディスクから読み取ります。
 
-* NAS ADPCMファイルの再生
+* YM2608 ADPCMファイルの再生
 
-X44 (44.1kHz 16bit PCM stereo software ADPCM) の再生は S44と同等かやや上のパワーが必要です。ディスク読み込み負担が減る代わりにデコードの負担で相殺されます。
+A44 (44.1kHz 16bit PCM stereo software ADPCM) の再生は S44と同等かやや上のパワーが必要です。ディスク読み込み負担が減る代わりにデコードの負担で相殺されます。
 
 * MP3ファイル
 
@@ -122,17 +112,17 @@ XM6gエミュレータでの検証では MPUノーウェイト オプション�
 
 引数をつけずに実行するか、`-h` オプションをつけて実行するとヘルプメッセージが表示されます。
 
-    usage: mp3exp [options] <input-file[.pcm|.s32|.s44|.s48|.m32|.m44|.m48|.x32|.x44|.x48|.mp3]>
+    usage: mp3exp [options] <input-file[.pcm|.s(32|44|48)|.m(32|44|48)|.a(32|44|48)|.n(32|44|48)|.mp3]>
     options:
          -a    ... do not use PCM8A.X for ADPCM encoding
          -b<n> ... buffer size [x 64KB] (2-96,default:4)
-         -u    ... use 060turbo/ts-6be16 high memory for buffering
+         -u    ... use 060turbo/TS-6BE16 high memory for buffering
          -l[n] ... loop count (none:infinite, default:1)
          -q[n] ... mp3 quality (0:high, 1:normal, 2:low, default:1)
          -t[n] ... mp3 album art brightness (1-100, 0:off, default:0)
          -x    ... mp3 album art half size
          -v[n] ... pcm8a/pcm8pp volume (1-15, default:8)
-         -c    ... do not use s44/x44 as mp3 cache
+         -c    ... do not use s44/a44 as mp3 cache
          -h    ... show help message
 
 `-a` PCM8A.X が常駐していない場合、または `-a` オプションをつけた場合は MP3EXP 自身で ADPCMエンコードを行います。精度は担保されますが、処理パフォーマンスが落ちます。できるだけ PCM8A.X / PCM8PP.X と組み合わせて使うようにしてください。
@@ -171,7 +161,7 @@ JPEGデコードライブラリとして Martin J. Fiedler氏の nanojpeg を改
 
 PNGデコードのために zlib をx68k向けにコンパイルしたものを利用させて頂いています。zlibのライセンスはzlibライセンスです。
 
-NAS ADPCM形式は Otankonas氏が 1995年に提案された X680x0 向け 16bit 符号付き PCM向けの独自ADPCMエンコード・デコードアルゴリズムおよびその実装ライブラリです。氏のライブラリコードの一部を当方でデバッグしたものを利用させて頂いています。
+YM2608 ADPCM形式のデコードライブラリとして Otankonas氏のライブラリコードの一部を当方でデバッグしたものを利用させて頂いています。
 
 以上により MP3EXP のライセンスは libmad に準じた GPLv2 です。
 
@@ -194,11 +184,12 @@ NAS ADPCM形式は Otankonas氏が 1995年に提案された X680x0 向け 16bit
 
 ### History
 
+* 0.7.5 (2023/02/24) ... YM2608 ADPCM形式に正式対応した(.A44/.N44)
 * 0.7.2 (2023/02/24) ... MP3 low quality mode (-q2) をサポートした 速度優先でコンパイルしたlibmadをリンクした
 * 0.7.0 (2023/02/23) ... MP3ファイルと同じフォルダにS44/A44ファイルが存在した場合、再生時にそれを参照するようにした
 * 0.6.9a (2023/02/23) ... -bオプションで32より大きい値を入れるとバスエラーが出ていたのを修正
 * 0.6.9 (2023/02/23) ... 68000MPUでMP3再生時にアドレスエラーが出ていたのを修正
-* 0.6.8 (2023/02/23) ... なす式ADPCM(.a44)の再生に対応した
+* 0.6.8 (2023/02/23) ... YM2608 ADPCM(.a44)の再生に対応した
 * 0.6.5 (2023/02/22) ... アルバムアートのハーフサイズをデフォルトにした
 * 0.6.4 (2023/02/22) ... -u指定時にハイメモリドライバの登録チェックをするようにした
 * 0.6.3 (2023/02/22) ... -bオプションの最大値を32から128にした
