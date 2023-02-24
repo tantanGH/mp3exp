@@ -590,12 +590,12 @@ try:
       } else {
 
         // PCM through (no encoding) with PCM8PP
-        size_t fread_len = fread(chain_tables[i].buffer, 1, adpcm_encoder.buffer_bytes, fp);
-        if (fread_len < adpcm_encoder.buffer_bytes) {
+        size_t fread_len = fread(chain_tables[i].buffer, 2, adpcm_encoder.buffer_bytes/2, fp);
+        if (fread_len < adpcm_encoder.buffer_bytes/2) {
           chain_tables[i].next = NULL;
           end_flag = 1;
         }
-        chain_tables[i].buffer_bytes = fread_len;
+        chain_tables[i].buffer_bytes = fread_len * 2;
 
       }
 
@@ -759,22 +759,19 @@ try:
         break;
       }
     }
- 
+
     // exit if not playing
     if (encode_mode == ENCODE_MODE_PCM8PP) {
       if (pcm8pp_get_data_length(0) == 0) {
-        // dummy wait to make sure it (500 msec) because pcm8pp may return 0 in case 48000Hz mode
-        for (int32_t t0 = ONTIME(); ONTIME() < t0 + 50;) {}
-        if (pcm8pp_get_data_length(0) == 0) {
-          if (end_flag) { 
-            printf("\rfinished.\x1b[0K");
-            rc = 0;
-          } else {
-            printf("\rerror: buffer underrun detected.\x1b[0K");
-            rc = 1;
-          }
-          break;
+      //if (B_BPEEK(REG_DMAC_CH2_CSR) & 0x80) {   // ch2 dmac operation complete?
+        if (end_flag) { 
+          printf("\rfinished.\x1b[0K");
+          rc = 0;
+        } else {
+          printf("\rerror: buffer underrun detected.\x1b[0K");
+          rc = 1;
         }
+        break;
       }
     } else if (encode_mode == ENCODE_MODE_PCM8A) {
       if (pcm8a_get_data_length(0) == 0) {
