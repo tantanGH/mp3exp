@@ -38,7 +38,7 @@ static void abort_application() {
 
 // show help message
 static void show_help_message() {
-  printf("usage: mp3exp [options] <input-file[.pcm|.s32|.s44|.s48|.m32|.m44|.m48|.x32|.x44|.x48|.mp3]>\n");
+  printf("usage: mp3exp [options] <input-file[.pcm|.s(32|44|48)|.m(32|44|48)|.a(32|44|48)|.n(32|44|48)|.mp3]>\n");
   printf("options:\n");
   printf("     -a    ... use MP3EXP for ADPCM encoding\n");
   printf("     -b<n> ... buffer size [x 64KB] (2-96,default:4)\n");
@@ -48,7 +48,7 @@ static void show_help_message() {
   printf("     -t[n] ... mp3 album art display brightness (1-100, default:off)\n");
   printf("     -x    ... mp3 album art display full size\n");
   printf("     -v[n] ... pcm8a/pcm8pp volume (1-15, default:8)\n");
-  printf("     -c    ... do not use .s44/.x44 as mp3 cache\n");
+  printf("     -c    ... do not use .s44/.a44 as mp3 cache\n");
   printf("     -h    ... show help message\n");
 }
 
@@ -192,32 +192,32 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
     pcm_channels = 1;
     decode_mode = DECODE_MODE_RESAMPLE;
     encode_mode = ENCODE_MODE_SELF;
-  } else if (stricmp(".x32", pcm_file_exp) == 0) {
+  } else if (stricmp(".a32", pcm_file_exp) == 0) {
     pcm_freq = 32000;
     pcm_channels = 2;
     decode_mode = DECODE_MODE_NAS_ADPCM;
     encode_mode = ENCODE_MODE_SELF;
-  } else if (stricmp(".x44", pcm_file_exp) == 0) {
+  } else if (stricmp(".a44", pcm_file_exp) == 0) {
     pcm_freq = 44100;
     pcm_channels = 2;
     decode_mode = DECODE_MODE_NAS_ADPCM;
     encode_mode = ENCODE_MODE_SELF;
-  } else if (stricmp(".x48", pcm_file_exp) == 0) {
+  } else if (stricmp(".a48", pcm_file_exp) == 0) {
     pcm_freq = 48000;
     pcm_channels = 2;
     decode_mode = DECODE_MODE_NAS_ADPCM;
     encode_mode = ENCODE_MODE_SELF;
-  } else if (stricmp(".y32", pcm_file_exp) == 0) {
+  } else if (stricmp(".n32", pcm_file_exp) == 0) {
     pcm_freq = 32000;
     pcm_channels = 2;
     decode_mode = DECODE_MODE_NAS_ADPCM;
     encode_mode = ENCODE_MODE_SELF;
-  } else if (stricmp(".y44", pcm_file_exp) == 0) {
+  } else if (stricmp(".n44", pcm_file_exp) == 0) {
     pcm_freq = 44100;
     pcm_channels = 2;
     decode_mode = DECODE_MODE_NAS_ADPCM;
     encode_mode = ENCODE_MODE_SELF;
-  } else if (stricmp(".y48", pcm_file_exp) == 0) {
+  } else if (stricmp(".n48", pcm_file_exp) == 0) {
     pcm_freq = 48000;
     pcm_channels = 2;
     decode_mode = DECODE_MODE_NAS_ADPCM;
@@ -245,7 +245,7 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
         mp3_cache_use = 1;
         mp3_quality = 0;
       } else {
-        strcpy(pcm_cache_file_name + strlen(pcm_cache_file_name) - 4, ".x44");
+        strcpy(pcm_cache_file_name + strlen(pcm_cache_file_name) - 4, ".a44");
         if (stat(pcm_cache_file_name, &stat_buf) == 0) {
           pcm_freq = 44100;
           pcm_channels = 2;
@@ -305,7 +305,7 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
         printf("error: PCM8A (>=1.02) or PCM8PP (>=0.83d) is required for MP3 playback.\n");
         goto exit;
       } else if (decode_mode == DECODE_MODE_NAS_ADPCM) {
-        printf("error: PCM8A (>=1.02) or PCM8PP (>=0.83d) is required for NAS ADPCM playback.\n");
+        printf("error: PCM8A (>=1.02) or PCM8PP (>=0.83d) is required for YM2608 ADPCM playback.\n");
         goto exit;
       } else {
         printf("\n<<warning>> PCM8A/PCM8PP is not running. Use MP3EXP for ADPCM encoding.\n");
@@ -356,7 +356,7 @@ try:
   // init nas adpcm decoder if needed
   if (decode_mode == DECODE_MODE_NAS_ADPCM) {
     if (nas_adpcm_init(&nas_adpcm_decoder, pcm_freq * pcm_channels * 4, pcm_freq, pcm_channels) != 0) {
-      printf("error: nas adpcm decoder initialization error.\n");
+      printf("error: YM2608 adpcm decoder initialization error.\n");
       goto catch;
     }
   }
@@ -463,7 +463,7 @@ try:
     printf("Data size     : %d [bytes]\n", pcm_file_size);
     printf("Data format   : %s\n", 
       decode_mode == DECODE_MODE_MP3 ? "MP3" : 
-      decode_mode == DECODE_MODE_NAS_ADPCM ? "NAS ADPCM" :
+      decode_mode == DECODE_MODE_NAS_ADPCM ? "YM2608 ADPCM" :
       encode_mode != ENCODE_MODE_NONE ? "16bit signed PCM (big)" : 
       "ADPCM(MSM6258V)");
 
