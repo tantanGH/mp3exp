@@ -54,7 +54,7 @@ LIBS =\
 	${XDEV68K_DIR}/lib/xc/DOSLIB.L \
 	${XDEV68K_DIR}/lib/xc/IOCSLIB.L \
 	${XDEV68K_DIR}/lib/xc/FLOATFNC.L \
-	${XDEV68K_DIR}/lib/mad/libmad.a \
+	${XDEV68K_DIR}/lib/mad/libmad-optspeed.a \
 	${XDEV68K_DIR}/lib/zlib/libz.a \
 	${XDEV68K_DIR}/lib/m68k_elf/m68000/libgcc.a
 

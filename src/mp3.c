@@ -284,9 +284,9 @@ int32_t mp3_decode_setup(MP3_DECODE_HANDLE* decode, void* mp3_data, size_t mp3_d
 }
 
 //
-//  decode MP3 stream
+//  decode MP3 stream with resampling
 //
-int32_t mp3_decode(MP3_DECODE_HANDLE* decode, int16_t* resample_buffer, size_t resample_buffer_len, int16_t resample_freq, size_t* resampled_len) {
+int32_t mp3_decode_resample(MP3_DECODE_HANDLE* decode, int16_t* resample_buffer, size_t resample_buffer_len, int16_t resample_freq, size_t* resampled_len) {
 
   // default return code
   int32_t rc = -1;
@@ -312,7 +312,7 @@ int32_t mp3_decode(MP3_DECODE_HANDLE* decode, int16_t* resample_buffer, size_t r
       }
 
       decode->mad_frame.options = decode->mp3_frame_options;
-
+      //printf("mad_frame.options=%d\n",decode->mad_frame.options);
       mad_synth_frame(&(decode->mad_synth), &(decode->mad_frame));
       mad_timer_add(&(decode->mad_timer), decode->mad_frame.header.duration);
 
@@ -321,8 +321,8 @@ int32_t mp3_decode(MP3_DECODE_HANDLE* decode, int16_t* resample_buffer, size_t r
       if (decode->mp3_sample_rate < 0) {
         decode->mp3_sample_rate = decode->current_mad_pcm->samplerate;
         decode->mp3_channels = decode->current_mad_pcm->channels;
-        //printf("MP3 frequency : %d\n", decode->mp3_sample_rate);
-        //printf("MP3 channels  : %s\n", decode->mp3_channels == 1 ? "mono" : "stereo");
+//        printf("MP3 frequency : %d\n", decode->mp3_sample_rate);
+//        printf("MP3 channels  : %s\n", decode->mp3_channels == 1 ? "mono" : "stereo");
       }
 
     } 
@@ -344,15 +344,14 @@ int32_t mp3_decode(MP3_DECODE_HANDLE* decode, int16_t* resample_buffer, size_t r
         }
 
         // stereo to mono
-        resample_buffer[ resample_ofs++ ] = ( scale_12bit(pcm->samples[0][i]) + scale_12bit(pcm->samples[1][i]) ) / 2;
+        resample_buffer[ resample_ofs++ ] = ( scale_16bit(pcm->samples[0][i]) + scale_16bit(pcm->samples[1][i]) ) / 2 / 16;
         decode->resample_counter -= pcm->samplerate;
 
         // up sampling for low quality mode
-        if (decode->resample_counter > pcm->samplerate) {
-          resample_buffer[ resample_ofs ] = resample_buffer[ resample_ofs - 1 ];
-          resample_ofs++;
-          decode->resample_counter -= pcm->samplerate;
-        }
+//        if (decode->resample_counter >= pcm->samplerate) {
+//          resample_buffer[ resample_ofs++ ] = ( scale_16bit(pcm->samples[0][i]) + scale_16bit(pcm->samples[1][i]) ) / 2 / 16;
+//          decode->resample_counter -= pcm->samplerate;
+//        }
 
       }
 
@@ -370,11 +369,10 @@ int32_t mp3_decode(MP3_DECODE_HANDLE* decode, int16_t* resample_buffer, size_t r
         decode->resample_counter -= pcm->samplerate;
 
         // up sampling for low quality mode
-        if (decode->resample_counter > pcm->samplerate) {
-          resample_buffer[ resample_ofs ] = resample_buffer[ resample_ofs - 1];
-          resample_ofs++;
-          decode->resample_counter -= pcm->samplerate;
-        }
+//        if (decode->resample_counter >= pcm->samplerate) {
+//          resample_buffer[ resample_ofs++ ] = scale_12bit(pcm->samples[0][i]);
+//          decode->resample_counter -= pcm->samplerate;
+//        }
       }
 
     }
