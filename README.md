@@ -55,7 +55,7 @@ Mercury-Unit で再生する場合には たにぃ さんの PCM8PP.X 0.83d を�
 以下のエミュレータ環境を推奨します。
 
 XM6 typeG
- - X68030 25MHz メモリ12MB MPU高速化許可 TS-6BE16拡張メモリ有効 ま〜きゅり〜ゆにっとV3.5
+ - X68030 68EC030 25MHz メモリ12MB MPU高速化許可 TS-6BE16拡張メモリ有効 ま〜きゅり〜ゆにっとV3.5
  - ハイメモリドライバ [TS16DRVp.X](https://t.co/qJDbBEiJsS) [https://twitter.com/arith_rose/status/1612786081308774402](https://twitter.com/arith_rose/status/1612786081308774402)
  - PCM8PP.X -c1 -s4 (48kHzデータ再生時は -c1 -s2)
  - MP3再生時にはMPUノーウェイト設定
