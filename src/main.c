@@ -47,7 +47,7 @@ static void show_help_message() {
   printf("     -q[n] ... mp3 quality (0:high, 1:normal, 2:low, default:1)\n");
   printf("     -t[n] ... mp3 album art display brightness (1-100, default:off)\n");
   printf("     -x    ... mp3 album art display full size\n");
-  printf("     -v[n] ... pcm8a/pcm8pp volume (1-15, default:8)\n");
+  printf("     -v[n] ... pcm8a/pcm8pp volume (1-15, default:7)\n");
   printf("     -c    ... do not use .s44/.a44 as mp3 cache\n");
   printf("     -h    ... show help message\n");
 }

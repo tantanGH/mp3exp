@@ -121,7 +121,7 @@ XM6gエミュレータでの検証では MPUノーウェイト オプション�
          -q[n] ... mp3 quality (0:high, 1:normal, 2:low, default:1)
          -t[n] ... mp3 album art brightness (1-100, 0:off, default:0)
          -x    ... mp3 album art half size
-         -v[n] ... pcm8a/pcm8pp volume (1-15, default:8)
+         -v[n] ... pcm8a/pcm8pp volume (1-15, default:7)
          -c    ... do not use s44/a44 as mp3 cache
          -h    ... show help message
 
@@ -139,7 +139,7 @@ XM6gエミュレータでの検証では MPUノーウェイト オプション�
 
 `-x` オプションでMP3アルバムアートをオリジナルの大きさで表示します。512x512を超える部分はカットされます。
 
-`-v` オプションでPCM8A.X/PCM8PP.X使用時の音量を指定します。デフォルトは8です。
+`-v` オプションでPCM8A.X/PCM8PP.X使用時の音量を指定します。デフォルトは7です。PCM8A/PCM8PP標準は8ですが、音割れを防ぐために7としています。
 
 `-c` デフォルトではMP3ファイルと同じ場所に同じ名前(拡張子のみ異なる)で.S44または.A44が置いてあった場合、そちらをキャッシュとして再生時に流用します。MP3はタグ情報とアルバムアートのみに使われます。このオプションを指定した場合はそれを行わず、MP3ファイルを直接再生します。
 
