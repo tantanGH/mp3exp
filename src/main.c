@@ -72,7 +72,7 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
   int16_t mp3_pic_brightness = 0;
   int16_t mp3_pic_half_size = 1;
   int16_t mp3_cache_unuse = 0;
-  int16_t pcm8_volume = 8;
+  int16_t pcm8_volume = 7;
   for (int16_t i = 1; i < argc; i++) {
     if (argv[i][0] == '-' && strlen(argv[i]) >= 2) {
       if (argv[i][1] == 'a') {
