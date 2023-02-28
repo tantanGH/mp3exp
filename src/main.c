@@ -209,17 +209,17 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
     encode_mode = ENCODE_MODE_SELF;
   } else if (stricmp(".n32", pcm_file_exp) == 0) {
     pcm_freq = 32000;
-    pcm_channels = 2;
+    pcm_channels = 1;
     decode_mode = DECODE_MODE_NAS_ADPCM;
     encode_mode = ENCODE_MODE_SELF;
   } else if (stricmp(".n44", pcm_file_exp) == 0) {
     pcm_freq = 44100;
-    pcm_channels = 2;
+    pcm_channels = 1;
     decode_mode = DECODE_MODE_NAS_ADPCM;
     encode_mode = ENCODE_MODE_SELF;
   } else if (stricmp(".n48", pcm_file_exp) == 0) {
     pcm_freq = 48000;
-    pcm_channels = 2;
+    pcm_channels = 1;
     decode_mode = DECODE_MODE_NAS_ADPCM;
     encode_mode = ENCODE_MODE_SELF;
   } else if (stricmp(".mp3", pcm_file_exp) == 0) {
