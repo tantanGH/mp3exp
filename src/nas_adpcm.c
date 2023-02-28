@@ -36,7 +36,7 @@ int32_t nas_adpcm_init(NAS_ADPCM_DECODE_HANDLE* nas, size_t decode_buffer_len, i
     :                   // clobbered register
   );
 
-  register uint32_t reg_d0 asm ("d0") = (uint32_t)(nas->channels);
+  register uint32_t reg_d0 asm ("d0") = (uint32_t)(nas->channels == 1 ? 0 : 1);
   asm volatile (
     "jbsr  atop_init\n"
     :                   // output operand
