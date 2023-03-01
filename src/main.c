@@ -780,13 +780,8 @@ try:
 
   // for kmd
   uint32_t play_start_time = ONTIME() * 10;
-  KMD_EVENT* kmd_current_event = NULL;
-  KMD_EVENT* kmd_event0 = NULL;
-  KMD_EVENT* kmd_event1 = NULL;
-  KMD_EVENT* kmd_event2 = NULL;
   if (use_kmd) {
-    kmd_current_event = kmd_next_event(&kmd);
-    if (kmd_current_event != NULL) printf("\n\n");
+    B_PRINT("\n\n");
   }
 
   // dummy wait to make sure DMAC start (200 msec)
@@ -854,43 +849,8 @@ try:
     // kmd display
     if (use_kmd) {
       uint32_t elapsed_msec = ONTIME() * 10 - play_start_time;
-      if (kmd_event0 != NULL && kmd_event0->end_msec <= elapsed_msec) {
-        B_PRINT("\r\x1b[0K");
-        kmd_event0 = NULL;
-      }
-      if (kmd_event1 != NULL && kmd_event1->end_msec <= elapsed_msec) {
-        if (kmd_event0 == NULL && kmd_event2 == NULL) {
-          B_PRINT("\r\x1b[0K");
-          kmd_event1 = NULL;          
-        }
-      }
-      if (kmd_event2 != NULL && kmd_event2->end_msec <= elapsed_msec) {
-        B_PRINT("\n\r\x1b[0K\x1b[1A");
-        kmd_event2 = NULL;
-      }
-      if (kmd_current_event != NULL && kmd_current_event->start_msec <= elapsed_msec) {
-        int16_t pos_x = kmd_current_event->pos_x;
-        int16_t pos_y = kmd_current_event->pos_y;
-        static uint8_t xs[32];
-        if (pos_y == 0) {
-          sprintf(xs, "\r\x1b[0K\x1b[%dC%s\r", pos_x + 1, kmd_current_event->message);
-          B_PRINT(xs);
-          kmd_event0 = kmd_current_event;
-          kmd_event1 = NULL;
-        } else if (pos_y == 1) {
-          sprintf(xs, "\n\r\x1b[0K\x1b[1A\x1b[0K\x1b[%dC%s\r", pos_x + 1, kmd_current_event->message);
-          B_PRINT(xs);
-          kmd_event0 = NULL;
-          kmd_event1 = kmd_current_event;
-          kmd_event2 = NULL;
-        } else if (pos_y == 2) {
-          sprintf(xs, "\n\r\x1b[0K\x1b[%dC%s\x1b[1A\r", pos_x + 1, kmd_current_event->message);
-          B_PRINT(xs);
-          kmd_event1 = NULL;
-          kmd_event2 = kmd_current_event;
-        }
-        kmd_current_event = kmd_next_event(&kmd);
-      }
+      kmd_deactivate_events(&kmd, elapsed_msec);
+      kmd_activate_current_event(&kmd, elapsed_msec);
     }
 
     // check buffer flip

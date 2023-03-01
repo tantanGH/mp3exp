@@ -14,6 +14,7 @@
 typedef struct {
   int16_t pos_x;
   int16_t pos_y;
+  int16_t active;
   uint32_t start_msec;
   uint32_t end_msec;
   uint8_t message[ KMD_MAX_MESSAGE_LEN + 1 ];
@@ -28,5 +29,9 @@ typedef struct {
 int32_t kmd_init(KMD_HANDLE* kmd, FILE* fp);
 void kmd_close(KMD_HANDLE* kmd);
 KMD_EVENT* kmd_next_event(KMD_HANDLE* kmd);
+void kmd_print_event_message(KMD_HANDLE* kmd, KMD_EVENT* event);
+void kmd_erase_event_message(KMD_HANDLE* kmd, KMD_EVENT* event);
+void kmd_deactivate_events(KMD_HANDLE* kmd, uint32_t elapsed);
+void kmd_activate_current_event(KMD_HANDLE* kmd, uint32_t elapsed);
 
 #endif
