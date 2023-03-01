@@ -14,6 +14,7 @@
 #include "adpcm.h"
 #include "nas_adpcm.h"
 #include "mp3.h"
+#include "kmd.h"
 #include "mp3exp.h"
 
 //#define DEBUG
@@ -155,7 +156,7 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
   int16_t pcm_gain = encode_with_self ? 1 : 16; 
   int16_t decode_mode = DECODE_MODE_NONE;
   int16_t encode_mode = ENCODE_MODE_NONE;
-  int16_t mp3_cache_use = 0;
+  int16_t use_mp3_cache = 0;
   if (stricmp(".pcm", pcm_file_exp) == 0) {
     pcm_freq = 15625;                 // fixed
     pcm_channels = 1;
@@ -233,34 +234,72 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
       adpcm_output_freq = 10417;
     }
 
-    // check s44/a44 file existence for cache use
+    // check s44/a44/m44/n44 file existence for cache use
     if (!mp3_cache_unuse) {
       struct stat stat_buf;
       strcpy(pcm_cache_file_name, pcm_file_name);
-      strcpy(pcm_cache_file_name + strlen(pcm_cache_file_name) - 4, ".s44");
-      if (stat(pcm_cache_file_name, &stat_buf) == 0) {
-        pcm_freq = 44100;
-        pcm_channels = 2;
-        decode_mode = DECODE_MODE_RESAMPLE;
-        mp3_cache_use = 1;
-        mp3_quality = 0;
-      } else {
+      do {
+        strcpy(pcm_cache_file_name + strlen(pcm_cache_file_name) - 4, ".s44");
+        if (stat(pcm_cache_file_name, &stat_buf) == 0) {
+          pcm_freq = 44100;
+          pcm_channels = 2;
+          decode_mode = DECODE_MODE_RESAMPLE;
+          use_mp3_cache = 1;
+          mp3_quality = 0;
+          break;
+        }
         strcpy(pcm_cache_file_name + strlen(pcm_cache_file_name) - 4, ".a44");
         if (stat(pcm_cache_file_name, &stat_buf) == 0) {
           pcm_freq = 44100;
           pcm_channels = 2;
           decode_mode = DECODE_MODE_NAS_ADPCM;
-          mp3_cache_use = 1;
+          use_mp3_cache = 1;
           mp3_quality = 0;
-        } else {
-          pcm_cache_file_name[0] = '\0';
+          break;
         }
-      }
+        strcpy(pcm_cache_file_name + strlen(pcm_cache_file_name) - 4, ".m44");
+        if (stat(pcm_cache_file_name, &stat_buf) == 0) {
+          pcm_freq = 44100;
+          pcm_channels = 1;
+          decode_mode = DECODE_MODE_RESAMPLE;
+          use_mp3_cache = 1;
+          mp3_quality = 0;
+          break;
+        }
+        strcpy(pcm_cache_file_name + strlen(pcm_cache_file_name) - 4, ".n44");
+        if (stat(pcm_cache_file_name, &stat_buf) == 0) {
+          pcm_freq = 44100;
+          pcm_channels = 1;
+          decode_mode = DECODE_MODE_NAS_ADPCM;
+          use_mp3_cache = 1;
+          mp3_quality = 0;
+          break;
+        }
+        pcm_cache_file_name[0] = '\0';
+        use_mp3_cache = 0;
+      } while (0);
     }
 
   } else {
     printf("error: unknown format file (%s).\n", pcm_file_name);
     goto exit;
+  }
+
+  // check kmd file existence
+  static uint8_t kmd_file_name[ MAX_PATH_LEN ];
+  KMD_HANDLE kmd = { 0 };
+  int16_t use_kmd = 0;
+  struct stat kmd_stat_buf;
+  strcpy(kmd_file_name, pcm_file_name);
+  strcpy(kmd_file_name + strlen(kmd_file_name) - 4, ".kmd");
+  if (stat(kmd_file_name, &kmd_stat_buf) == 0) {
+    FILE* fp_kmd = fopen(kmd_file_name, "r");
+    kmd_init(&kmd, fp_kmd);
+    fclose(fp_kmd);
+    use_kmd = 1;
+  } else {
+    kmd_file_name[0] = '\0';
+    use_kmd = 0;
   }
 
   // cursor off
@@ -346,7 +385,7 @@ try:
   }
 
   // init mp3 decoder
-  if (mp3_cache_use || decode_mode == DECODE_MODE_MP3) {
+  if (use_mp3_cache || decode_mode == DECODE_MODE_MP3) {
     if (mp3_init(&mp3_decoder) != 0) {
       printf("error: MP3 decoder initialization error.\n");
       goto catch;    
@@ -377,7 +416,7 @@ try:
 
   // read the first 10 bytes of the MP3 file
   size_t skip_offset = 0;
-  if (mp3_cache_use || decode_mode == DECODE_MODE_MP3) {
+  if (use_mp3_cache || decode_mode == DECODE_MODE_MP3) {
     printf("\rparsing ID3v2 tag and album art...");
     int32_t ofs = mp3_parse_tags(&mp3_decoder, mp3_pic_brightness, mp3_pic_half_size, fp);
     if (ofs < 0) {
@@ -388,7 +427,7 @@ try:
   }
 
   // in case mp3 cache mode, reopen the file
-  if (mp3_cache_use) {
+  if (use_mp3_cache) {
     fclose(fp);
     fp = fopen(pcm_cache_file_name, "rb");
     if (fp == NULL) {
@@ -474,7 +513,7 @@ try:
       printf("PCM length    : %4.2f [sec]\n", (float)pcm_file_size / pcm_1sec_size);
     }
 
-    if (!mp3_cache_use && decode_mode == DECODE_MODE_NAS_ADPCM) {
+    if (!use_mp3_cache && decode_mode == DECODE_MODE_NAS_ADPCM) {
       printf("PCM frequency : %d [Hz]\n", pcm_freq);
       printf("PCM channels  : %s\n", pcm_channels == 1 ? "mono" : "stereo");
     }
@@ -497,7 +536,7 @@ try:
     }
 
     // describe MP3 decoding rate
-    if (mp3_cache_use || decode_mode == DECODE_MODE_MP3) {
+    if (use_mp3_cache || decode_mode == DECODE_MODE_MP3) {
       printf("MP3 quality   : %s\n",
         mp3_quality == 2 ? "low" :
         mp3_quality == 1 ? "normal" : "high");
@@ -737,10 +776,21 @@ try:
 
   }
 
-  printf("\rnow playing ... push [ESC]/[Q] key to stop.\x1b[0K");
+  B_PRINT("\rnow playing ... push [ESC]/[Q] key to stop.\x1b[0K");
 
-  // dummy wait to make sure DMAC start (300 msec)
-  for (int32_t t0 = ONTIME(); ONTIME() < t0 + 30;) {}
+  // for kmd
+  uint32_t play_start_time = ONTIME() * 10;
+  KMD_EVENT* kmd_current_event = NULL;
+  KMD_EVENT* kmd_event0 = NULL;
+  KMD_EVENT* kmd_event1 = NULL;
+  KMD_EVENT* kmd_event2 = NULL;
+  if (use_kmd) {
+    kmd_current_event = kmd_next_event(&kmd);
+    if (kmd_current_event != NULL) printf("\n\n");
+  }
+
+  // dummy wait to make sure DMAC start (200 msec)
+  for (int32_t t0 = ONTIME(); ONTIME() < t0 + 20;) {}
 
   int16_t current_chain = 0;
   int32_t pcm8pp_block_counter = 0;
@@ -754,7 +804,8 @@ try:
     if (B_KEYSNS() != 0) {
       int16_t scan_code = B_KEYINP() >> 8;
       if (scan_code == KEY_SCAN_CODE_ESC || scan_code == KEY_SCAN_CODE_Q) {
-        printf("\rstopped.\x1b[0K");
+        if (use_kmd) B_PRINT("\n\n");
+        B_PRINT("\rstopped.\x1b[0K");
         rc = 1;
         break;
       }
@@ -765,10 +816,11 @@ try:
       if (pcm8pp_get_data_length(0) == 0) {
       //if (B_BPEEK(REG_DMAC_CH2_CSR) & 0x80) {   // ch2 dmac operation complete?
         if (end_flag) { 
-          printf("\rfinished.\x1b[0K");
+          if (use_kmd) B_PRINT("\n\n");
+          B_PRINT("\rfinished.\x1b[0K");
           rc = 0;
         } else {
-          printf("\rerror: buffer underrun detected.\x1b[0K");
+          B_PRINT("\rerror: buffer underrun detected.\x1b[0K");
           rc = 1;
         }
         break;
@@ -776,10 +828,11 @@ try:
     } else if (encode_mode == ENCODE_MODE_PCM8A) {
       if (pcm8a_get_data_length(0) == 0) {
         if (end_flag) { 
-          printf("\rfinished.\x1b[0K");
+          if (use_kmd) B_PRINT("\n\n");
+          B_PRINT("\rfinished.\x1b[0K");
           rc = 0;
         } else {
-          printf("\rerror: buffer underrun detected.\x1b[0K");
+          B_PRINT("\rerror: buffer underrun detected.\x1b[0K");
           rc = 1;
         }
         break;
@@ -787,13 +840,56 @@ try:
     } else {
       if (ADPCMSNS() == 0) {
         if (end_flag) {
-          printf("\rfinished.\x1b[0K");
+          if (use_kmd) B_PRINT("\n\n");
+          B_PRINT("\rfinished.\x1b[0K");
           rc = 0;
         } else {
-          printf("\rerror: buffer underrun detected.\x1b[0K");
+          B_PRINT("\rerror: buffer underrun detected.\x1b[0K");
           rc = 1;
         }
         break;
+      }
+    }
+
+    // kmd display
+    if (use_kmd) {
+      uint32_t elapsed_msec = ONTIME() * 10 - play_start_time;
+      if (kmd_event0 != NULL && kmd_event0->end_msec <= elapsed_msec) {
+        B_PRINT("\r\x1b[0K");
+        kmd_event0 = NULL;
+      }
+      if (kmd_event1 != NULL && kmd_event1->end_msec <= elapsed_msec) {
+        if (kmd_event0 == NULL && kmd_event2 == NULL) {
+          B_PRINT("\r\x1b[0K");
+          kmd_event1 = NULL;          
+        }
+      }
+      if (kmd_event2 != NULL && kmd_event2->end_msec <= elapsed_msec) {
+        B_PRINT("\n\r\x1b[0K\x1b[1A");
+        kmd_event2 = NULL;
+      }
+      if (kmd_current_event != NULL && kmd_current_event->start_msec <= elapsed_msec) {
+        int16_t pos_x = kmd_current_event->pos_x;
+        int16_t pos_y = kmd_current_event->pos_y;
+        static uint8_t xs[32];
+        if (pos_y == 0) {
+          sprintf(xs, "\r\x1b[0K\x1b[%dC%s\r", pos_x + 1, kmd_current_event->message);
+          B_PRINT(xs);
+          kmd_event0 = kmd_current_event;
+          kmd_event1 = NULL;
+        } else if (pos_y == 1) {
+          sprintf(xs, "\n\r\x1b[0K\x1b[1A\x1b[0K\x1b[%dC%s\r", pos_x + 1, kmd_current_event->message);
+          B_PRINT(xs);
+          kmd_event0 = NULL;
+          kmd_event1 = kmd_current_event;
+          kmd_event2 = NULL;
+        } else if (pos_y == 2) {
+          sprintf(xs, "\n\r\x1b[0K\x1b[%dC%s\x1b[1A\r", pos_x + 1, kmd_current_event->message);
+          B_PRINT(xs);
+          kmd_event1 = NULL;
+          kmd_event2 = kmd_current_event;
+        }
+        kmd_current_event = kmd_next_event(&kmd);
       }
     }
 
@@ -856,7 +952,7 @@ try:
           // MP3 decode and PCM through (no encoding) with PCM8PP
           size_t decoded_bytes;
           if (mp3_decode_full(&mp3_decoder, cta->buffer, adpcm_encoder.buffer_bytes, &decoded_bytes) != 0) {
-            printf("\rerror: mp3 decode error.\x1b[0K");
+            B_PRINT("\rerror: mp3 decode error.\x1b[0K");
             goto catch;
           }
           cta->buffer_bytes = decoded_bytes;
@@ -909,7 +1005,7 @@ try:
           // MP3 decode and ADPCM encode
           size_t resampled_len;
           if (mp3_decode_resample(&mp3_decoder, cta->buffer, adpcm_encoder.buffer_bytes / sizeof(int16_t), adpcm_output_freq, &resampled_len) != 0) {
-            printf("\rerror: mp3 decode error.\x1b[0K");
+            B_PRINT("\rerror: mp3 decode error.\x1b[0K");
             goto catch;
           }
           cta->buffer_bytes = resampled_len * sizeof(int16_t);
@@ -1027,12 +1123,17 @@ catch:
     }
   }
 
+  // close kmd handle
+  if (use_kmd) {
+    kmd_close(&kmd);
+  }
+
   // loop check
   if (rc == 0) {
     if (loop_count == 0 || --loop_count > 0) goto loop;
   }
 
-  printf("\n");
+  B_PRINT("\r\n");
 
 exit:
   // flush key buffer
