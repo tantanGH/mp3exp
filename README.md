@@ -199,11 +199,11 @@ Mercury-Unit デファクトスタンダードの録音再生ツール、Yas氏�
 
 実行例：
 
-    micropython kmdgen.py 180 120 8 12 20 50 hoge_120bpm.kmd
+    micropython kmdgen.py 180 130 4 2 20 10 bpm130.kmd
 
-180秒・120BPMの曲に対して8拍ごとにイベント行を出力。最初の12拍についてはスキップしイベントの出力は行わない。イベントはそれぞれの拍の20ticks(200msec)前を開始時間(st)とする。各イベントの消去時刻(et)は次のy0イベントの 50+1=51ticks(510msec)前とする。結果はhoge_120bpm.kmdに書き出す。
+180秒・130BPMの曲に対して4拍ごとにイベント行を出力。最初の2拍についてはスキップしイベントの出力は行わない。イベントはそれぞれの拍の20ticks(200msec)前を開始時間(st)とする。各イベントの消去時刻(et)は次のy0イベントの 10+1=11ticks(110msec)前とする。結果はbpm130.kmdに書き出す。
 
-<img src='images/kmdgen.png' width='500'/>
+<img src='images/kmdgen2.png' width='400'/>
 
 ---
 
