@@ -177,6 +177,9 @@ Mercury-Unit デファクトスタンダードの録音再生ツール、Yas氏�
 
 などとして実行します。
 
+Pythonなしで Human68k 上で直接実行できる.X形式の [KMDGEN.X](https://github.com/tantanGH/kmdgen)も用意しています。
+
+
 `total-seconds` ... 曲のトータル時間を秒単位で指定します。
 
 `bpm` ... 対象となる曲のBPM(1分間に何拍打つか)を指定します。BPMを知るには、
