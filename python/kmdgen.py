@@ -8,7 +8,7 @@ if len(sys.argv) < 8:
 
 # command line parameters
 total_seconds = int(sys.argv[1])
-bpm = int(sys.argv[2])
+bpm = float(sys.argv[2])
 beat_interval = int(sys.argv[3])
 beat_skip = int(sys.argv[4])
 event_offset = int(sys.argv[5])
