@@ -424,6 +424,7 @@ try:
       goto catch;
     }
     skip_offset = ofs;
+    printf("\r\x1b[0K");
   }
 
   // in case mp3 cache mode, reopen the file

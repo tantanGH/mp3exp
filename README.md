@@ -149,13 +149,13 @@ XM6gエミュレータでの検証では MPUノーウェイト オプション�
 
 ### Shuffle play
 
-ソースツリーの中にある `mp3shuffle.py` は [MicroPython for X680x0](https://github.com/yunkya2/micropython-x68k) 上で動作するシャッフル再生ツールです。カレントディレクトリにあるMP3ファイルをランダムに選択して再生します。コマンドライン引数で何ループするかを指定できます。
+ソースツリーの `python/` フォルダの中にある `mp3shuffle.py` は [MicroPython for X680x0](https://github.com/yunkya2/micropython-x68k) 上で動作するシャッフル再生ツールです。カレントディレクトリにあるMP3ファイルをランダムに選択して再生します。コマンドライン引数で何ループするかを指定できます。
 
 <img src='images/mp3exp7.png' width='800'/>
 
 ---
 
-### KMD歌詞ファイル
+### KMD歌詞ファイル再生
 
 Mercury-Unit デファクトスタンダードの録音再生ツール、Yas氏のSMR.XのKMD歌詞データファイルの簡易表示に対応しています。オリジナルのように24x24フォントではなく、通常の16x16フォント2段で表示します。PCM/S44/A44だけでなくMP3でも利用できます。
 
@@ -163,7 +163,45 @@ Mercury-Unit デファクトスタンダードの録音再生ツール、Yas氏�
 
 表示上の差異がありますので、KMDデータを新規に作成する際には必ずSMR.Xで表示を確認するようにしてください。
 
-なお、アルバムアートが右側にも少し表示されるのは、768x512で65536色表示を行う特殊な画面モードを使っているためです。
+---
+
+### KMD歌詞ファイルテンプレート作成ツール
+
+ソースツリーの `python/` フォルダの中にある `kmdgen.py` は [MicroPython for X680x0](https://github.com/yunkya2/micropython-x68k) を含めたPython環境上で動作するKMDファイルテンプレート再生ツールです。以下のように7つのコマンドラインパラメータを渡して利用します。
+
+    micropython kmdgen.py <total-seconds> <bpm> <beat-interval> <beat-skip> <event-offset> <erase-offset> <out-file>
+
+または
+
+    python3 kmdgen.py <total-seconds> <bpm> <beat-interval> <beat-skip> <event-offset> <erase-offset> <out-file>
+
+などとして実行します。
+
+`total-seconds` ... 曲のトータル時間を秒単位で指定します。
+
+`bpm` ... 対象となる曲のBPM(1分間に何拍打つか)を指定します。BPMを知るには、
+
+- メトロノームアプリやYoutubeのBPM動画などを合わせて再生して自分で調べる
+- スマホアプリやWebの無料サービスなどを使って調べる
+- aubioなどのツールを使って調べる
+
+などの方法がありますが、精度が微妙な場合もあります。いくつかテンプレートをBPMをずらして作ってみて再生し、しっくりくるものをベースに編集に入るのも良いと思います。出力されたテンプレートはダミーメッセージが入っていますがそのまますぐに SMR.X / MP3EXP.X で再生可能です。
+
+`beat-interval` ... 何拍ごとにKMDのイベント行を出力するかの指定。イベントは y0 → y2 → y0 → y2 → ... のように、y位置が交互に繰り返す形で出力されます。y1 の出力はされません。
+
+`beat-skip` ... 歌詞表示イベント行の出力を曲の出だしの何拍分スキップするかの指定。イントロ部分を飛ばしたいときなど。
+
+`event-offset` ... 歌詞表示は通常拍ぴったりではなく、やや前にすることが多いです。拍の何tick前にstを設定するかのオフセット指定です。1tickは10msec(KMDの最小時間単位)です。
+
+`erase-offset` ... 歌詞表示を消すタイミング(et)は、次のy0イベントのstの1tick前がデフォルトになります。このオフセットを指定するとさらにそれよりも指定したtick分だけ前にetを設定します。
+
+`out-file` ... 出力先のKMDファイル名です。既にファイルが存在する場合は上書きするかの確認を求められます。
+
+実行例：
+
+    micropython kmdgen.py 180 120 8 12 20 50 hoge_120bpm.kmd
+
+180秒・120BPMの曲に対して8拍ごとにイベント行を出力。最初の12拍についてはスキップしイベントの出力は行わない。イベントはそれぞれの拍の20ticks(200msec)前を開始時間(st)とする。各イベントの消去時刻(et)は次のy0イベントの 50+1=51ticks(510msec)前とする。結果はhoge_120bpm.kmdに書き出す。
 
 ---
 
