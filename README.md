@@ -167,7 +167,7 @@ Mercury-Unit デファクトスタンダードの録音再生ツール、Yas氏�
 
 ### KMD歌詞ファイルテンプレート作成ツール
 
-ソースツリーの `python/` フォルダの中にある `kmdgen.py` は [MicroPython for X680x0](https://github.com/yunkya2/micropython-x68k) を含めたPython環境上で動作するKMDファイルテンプレート再生ツールです。以下のように7つのコマンドラインパラメータを渡して利用します。
+ソースツリーの `python/` フォルダの中にある `kmdgen.py` は [MicroPython for X680x0](https://github.com/yunkya2/micropython-x68k) を含めたPython環境上で動作するKMDファイルテンプレート(タイムテーブル)自動作成ツールです。以下のように7つのコマンドラインパラメータを渡して利用します。
 
     micropython kmdgen.py <total-seconds> <bpm> <beat-interval> <beat-skip> <event-offset> <erase-offset> <out-file>
 
