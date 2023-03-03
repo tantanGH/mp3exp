@@ -122,7 +122,6 @@ int32_t adpcm_encode_resample(ADPCM_ENCODE_HANDLE* adpcm, uint8_t* adpcm_buffer,
   // source and target buffer offset
   size_t pcm_buffer_ofs = 0;
   size_t adpcm_buffer_ofs = 0;
-  size_t adpcm_num_samples = 0;
 
   while (pcm_buffer_ofs < pcm_buffer_len) {
 
@@ -156,17 +155,17 @@ int32_t adpcm_encode_resample(ADPCM_ENCODE_HANDLE* adpcm, uint8_t* adpcm_buffer,
     adpcm->last_estimate = new_estimate;
 
     // fill a byte in this order: lower 4 bit -> upper 4 bit
-    if ((adpcm_num_samples % 2) == 0) {
+    if ((adpcm->num_samples % 2) == 0) {
       adpcm_buffer[ adpcm_buffer_ofs ] = code;
     } else {
       adpcm_buffer[ adpcm_buffer_ofs ] |= code << 4;
       adpcm_buffer_ofs++;
     }
-    adpcm_num_samples++;
+    adpcm->num_samples++;
 
   }
 
-  if ((adpcm_num_samples % 2) != 0) {
+  if ((adpcm->num_samples % 2) != 0) {
     printf("error: ADPCM encoding error - incomplete ADPCM output byte.\n");
     return 0;
   }

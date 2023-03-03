@@ -12,18 +12,11 @@ int32_t raw_decode_init(RAW_DECODE_HANDLE* pcm, int32_t sample_rate, int16_t cha
   int32_t rc = -1;
 
   // baseline
-//  nas->decode_buffer = NULL;
-//  nas->decode_buffer_len = decode_buffer_len;
-//  nas->decode_buffer_ofs = 0;
   pcm->sample_rate = sample_rate;
   pcm->channels = channels;
   pcm->little_endian = little_endian;
   pcm->resample_counter = 0;
  
-  // buffer allocation
-//  nas->decode_buffer = himem_malloc(nas->decode_buffer_len * sizeof(int16_t), 0);
-//  if (nas->decode_buffer == NULL) goto exit;
-
   rc = 0;
 
 exit:
@@ -34,14 +27,11 @@ exit:
 //  close decoder handle
 //
 void raw_decode_close(RAW_DECODE_HANDLE* pcm) {
-//  if (nas->decode_buffer != NULL) {
-//    himem_free(nas->decode_buffer, 0);
-//    nas->decode_buffer = NULL;
-//  }
+
 }
 
 //
-//  resampling
+//  resampling and endian conversion
 //
 size_t raw_decode_resample(RAW_DECODE_HANDLE* pcm, int16_t* resample_buffer, int32_t resample_freq, int16_t* source_buffer, size_t source_buffer_len, int16_t gain) {
 
@@ -145,7 +135,7 @@ size_t raw_decode_resample(RAW_DECODE_HANDLE* pcm, int16_t* resample_buffer, int
 }
 
 //
-//  endian conversion
+//  endian conversion only
 //
 size_t raw_decode_convert_endian(RAW_DECODE_HANDLE* pcm, int16_t* resample_buffer, int16_t* source_buffer, size_t source_buffer_len) {
 

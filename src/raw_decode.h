@@ -13,10 +13,6 @@ typedef struct {
 
   size_t resample_counter;
 
-//  size_t decode_buffer_len;
-//  size_t decode_buffer_ofs;
-//  int16_t* decode_buffer;
-
 } RAW_DECODE_HANDLE;
 
 int32_t raw_decode_init(RAW_DECODE_HANDLE* pcm, int32_t sample_rate, int16_t channels, int16_t little_endian);

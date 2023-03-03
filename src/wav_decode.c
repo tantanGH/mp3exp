@@ -170,7 +170,7 @@ exit:
 }
 
 //
-//  resampling
+//  resampling with endian conversion
 //
 size_t wav_decode_resample(WAV_DECODE_HANDLE* wav, int16_t* resample_buffer, int32_t resample_freq, int16_t* source_buffer, size_t source_buffer_len, int16_t gain) {
 
@@ -228,7 +228,7 @@ size_t wav_decode_resample(WAV_DECODE_HANDLE* wav, int16_t* resample_buffer, int
 }
 
 //
-//  endian conversion
+//  endian conversion only
 //
 size_t wav_decode_convert_endian(WAV_DECODE_HANDLE* wav, int16_t* resample_buffer, int16_t* source_buffer, size_t source_buffer_len) {
 

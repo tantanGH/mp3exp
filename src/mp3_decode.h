@@ -11,7 +11,6 @@ typedef struct mad_synth MAD_SYNTH;
 typedef struct mad_header MAD_HEADER;
 typedef struct mad_pcm MAD_PCM;
 typedef struct mad_frame MAD_FRAME;
-//typedef struct mad_decoder MAD_DECODER;
 typedef mad_timer_t MAD_TIMER;
 
 typedef struct {
