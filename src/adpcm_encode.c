@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stddef.h>
-#include "adpcm.h"
 #include "himem.h"
+#include "adpcm_encode.h"
 
 //
 //  MSM6258V ADPCM constant tables
@@ -90,9 +90,9 @@ static uint8_t encode(int16_t current_data, int16_t last_estimate, int16_t* step
 }
 
 //
-//  initialize adpcm handle
+//  initialize adpcm encoder handle
 //
-int32_t adpcm_init(ADPCM_HANDLE* adpcm, int16_t buffer_count) {
+int32_t adpcm_encode_init(ADPCM_ENCODE_HANDLE* adpcm, int16_t buffer_count) {
 
   int32_t rc = -1;
 
@@ -101,7 +101,7 @@ int32_t adpcm_init(ADPCM_HANDLE* adpcm, int16_t buffer_count) {
   adpcm->num_samples = 0;
   adpcm->resample_counter = 0;
 
-  adpcm->use_high_memory = 0;
+  adpcm->use_high_memory = 0;     // use main memory only
   adpcm->current_buffer_id = 0;
   adpcm->buffer_count = buffer_count;
   adpcm->buffer_bytes = ADPCM_BUFFER_SIZE;
@@ -121,9 +121,9 @@ exit:
 }
 
 //
-//  close adpcm handle
+//  close adpcm encoder handle
 //
-void adpcm_close(ADPCM_HANDLE* adpcm) {
+void adpcm_encode_close(ADPCM_ENCODE_HANDLE* adpcm) {
 
   // reclaim buffers
   for (int16_t i = 0; i < adpcm->buffer_count; i++) {
@@ -137,7 +137,7 @@ void adpcm_close(ADPCM_HANDLE* adpcm) {
 //
 //  execute adpcm encoding
 //
-int32_t adpcm_encode(ADPCM_HANDLE* adpcm, void* pcm_buffer, size_t pcm_buffer_len, int16_t pcm_bit_depth, int16_t pcm_channels) {
+int32_t adpcm_encode_exec(ADPCM_ENCODE_HANDLE* adpcm, void* pcm_buffer, size_t pcm_buffer_len, int16_t pcm_bit_depth, int16_t pcm_channels) {
 
   // default return code
   int32_t rc = -1;
@@ -210,7 +210,7 @@ exit:
 //
 //  resampling
 //
-size_t adpcm_resample(ADPCM_HANDLE* adpcm, int16_t* convert_buffer, int16_t* source_buffer, size_t source_buffer_len, int32_t source_pcm_freq, int16_t source_pcm_channels, int16_t gain) {
+size_t adpcm_rencode_esample(ADPCM_ENCODE_HANDLE* adpcm, int16_t* convert_buffer, int16_t* source_buffer, size_t source_buffer_len, int32_t source_pcm_freq, int16_t source_pcm_channels, int16_t gain) {
 
   size_t convert_buffer_ofs = 0;
   size_t source_buffer_ofs = 0;

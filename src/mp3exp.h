@@ -12,21 +12,20 @@
 
 #define FREAD_STAGING_BUFFER_BYTES (65536*4)
 
+#define PCM8_TYPE_NONE    (0)
+#define PCM8_TYPE_PCM8    (1)
+#define PCM8_TYPE_PCM8A   (2)
+#define PCM8_TYPE_PCM8PP  (3)
+
+#define DRIVER_MP3EXP  (0)
+#define DRIVER_PCM8A   (1)
+#define DRIVER_PCM8PP  (2)
+
 #define FORMAT_ADPCM   (0)
 #define FORMAT_RAW     (1)
 #define FORMAT_YM2608  (2)
 #define FORMAT_WAV     (3)
 #define FORMAT_MP3     (4)
-
-#define ENCODE_MODE_NONE   (0)
-#define ENCODE_MODE_SELF   (1)
-#define ENCODE_MODE_PCM8A  (2)
-#define ENCODE_MODE_PCM8PP (3)
-
-#define PCM8_TYPE_NONE    (0)
-#define PCM8_TYPE_PCM8    (1)
-#define PCM8_TYPE_PCM8A   (2)
-#define PCM8_TYPE_PCM8PP  (3)
 
 typedef struct {
     void* buffer;

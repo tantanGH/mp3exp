@@ -11,13 +11,13 @@
 #include "crtc.h"
 #include "himem.h"
 
-// pcm8
+// drivers
 #include "pcm8.h"
 #include "pcm8a.h"
 #include "pcm8pp.h"
 
 // codec
-#include "adpcm.h"
+#include "adpcm_encode.h"
 #include "raw_decode.h"
 #include "wav_decode.h"
 #include "mp3_decode.h"
@@ -396,14 +396,14 @@ loop:
 
 try:
   // encoder and decoders
-  ADPCM_HANDLE adpcm_encoder = { 0 };
+  ADPCM_ENCODE_HANDLE adpcm_encoder = { 0 };
   MP3_DECODE_HANDLE mp3_decoder = { 0 };
   WAV_DECODE_HANDLE wav_decoder = { 0 };
   RAW_DECODE_HANDLE raw_decoder = { 0 };
   YM2608_DECODE_HANDLE ym2608_decoder = { 0 };
 
   // init adpcm (msm6258v) encoder
-  if (adpcm_init(&adpcm_encoder, num_chains+1) != 0) {
+  if (adpcm_encode_init(&adpcm_encoder, num_chains+1) != 0) {
     printf("error: ADPCM encoder initialization error.\n");
     goto catch;
   }
@@ -692,7 +692,7 @@ try:
           chain_tables[i].next = NULL;
           end_flag = 1;
         }
-        size_t resampled_len = adpcm_resample(&adpcm_encoder, chain_tables[i].buffer,
+        size_t resampled_len = adpcm_encode_resample(&adpcm_encoder, chain_tables[i].buffer,
                                               fread_buffer, fread_len, pcm_freq, pcm_channels, pcm_gain);
         chain_tables[i].buffer_bytes = resampled_len * sizeof(int16_t);
 
@@ -744,7 +744,7 @@ try:
           chain_tables[i].next = NULL;
           end_flag = 1;
         }
-        size_t resampled_len = adpcm_resample(&adpcm_encoder, chain_tables[i].buffer,
+        size_t resampled_len = adpcm_encode_resample(&adpcm_encoder, chain_tables[i].buffer,
                                               fread_buffer, fread_len, pcm_freq, pcm_channels, pcm_gain);
         chain_tables[i].buffer_bytes = resampled_len * sizeof(int16_t);
 
@@ -759,9 +759,9 @@ try:
       int16_t orig_id = adpcm_encoder.current_buffer_id;
       do {
         size_t fread_len = fread(fread_buffer, 2, fread_buffer_len, fp);
-        size_t resampled_len = adpcm_resample(&adpcm_encoder, resample_buffer, 
+        size_t resampled_len = adpcm_encode_resample(&adpcm_encoder, resample_buffer, 
                                               fread_buffer, fread_len, pcm_freq, pcm_channels, pcm_gain);
-        adpcm_encode(&adpcm_encoder, resample_buffer, resampled_len * sizeof(int16_t), 16, 1);
+        adpcm_encode_exec(&adpcm_encoder, resample_buffer, resampled_len * sizeof(int16_t), 16, 1);
         if (fread_len < fread_buffer_len) {
           chain_tables[i].next = NULL;
           end_flag = 1;
@@ -1012,7 +1012,7 @@ try:
             cta->next = NULL;
             end_flag = 1;
           }
-          size_t resampled_len = adpcm_resample(&adpcm_encoder, cta->buffer, 
+          size_t resampled_len = adpcm_encode_resample(&adpcm_encoder, cta->buffer, 
                                                 fread_buffer, fread_len, pcm_freq, pcm_channels, pcm_gain);
           cta->buffer_bytes = resampled_len * sizeof(int16_t);
 
@@ -1065,7 +1065,7 @@ try:
             end_flag = 1;
           }
 
-          size_t resampled_len = adpcm_resample(&adpcm_encoder, cta->buffer, 
+          size_t resampled_len = adpcm_encode_resample(&adpcm_encoder, cta->buffer, 
                                                 fread_buffer, fread_len, pcm_freq, pcm_channels, pcm_gain);
           cta->buffer_bytes = resampled_len * sizeof(int16_t);
         }
@@ -1076,9 +1076,9 @@ try:
         int16_t orig_id = adpcm_encoder.current_buffer_id;
         do {
           size_t fread_len = fread(fread_buffer, 2, fread_buffer_len, fp);
-          size_t resample_len = adpcm_resample(&adpcm_encoder, resample_buffer, 
+          size_t resample_len = adpcm_encode_resample(&adpcm_encoder, resample_buffer, 
                                                 fread_buffer, fread_len, pcm_freq, pcm_channels, pcm_gain);
-          adpcm_encode(&adpcm_encoder, resample_buffer, resample_len * sizeof(int16_t), 16, 1);
+          adpcm_encode_exec(&adpcm_encoder, resample_buffer, resample_len * sizeof(int16_t), 16, 1);
           if (fread_len < fread_buffer_len) {
             cta->next = NULL;
             end_flag = 1;
@@ -1134,7 +1134,7 @@ catch:
   }
 
   // close adpcm encoder
-  adpcm_close(&adpcm_encoder);
+  adpcm_encode_close(&adpcm_encoder);
 
   // close raw decoder
   if (input_format == FORMAT_RAW) {

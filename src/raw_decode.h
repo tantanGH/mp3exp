@@ -1,5 +1,5 @@
-#ifndef __H_RAW__
-#define __H_RAW__
+#ifndef __H_RAW_DECODE__
+#define __H_RAW_DECODE__
 
 #include <stdio.h>
 #include <stdint.h>

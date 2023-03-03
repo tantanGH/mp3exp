@@ -1,5 +1,5 @@
-#ifndef __H_YM2608_ADPCM__
-#define __H_YM2608_ADPCM__
+#ifndef __H_YM2608_DECODE__
+#define __H_YM2608_DECODE__
 
 #include <stdio.h>
 #include <stdint.h>

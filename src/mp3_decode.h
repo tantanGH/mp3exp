@@ -1,5 +1,5 @@
-#ifndef __H_MP3__
-#define __H_MP3__
+#ifndef __H_MP3_DECODE__
+#define __H_MP3_DECODE__
 
 #include <stdio.h>
 #include <stdint.h>
