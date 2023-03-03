@@ -217,8 +217,7 @@ size_t wav_decode_resample(WAV_DECODE_HANDLE* wav, int16_t* resample_buffer, int
       // little endian
       uint8_t* source_buffer_uint8 = (uint8_t*)(&(source_buffer[ source_buffer_ofs ]));
       int16_t mch = (int16_t)(source_buffer_uint8[1] * 256 + source_buffer_uint8[0]);
-      int16_t x = mch / 2 / gain;
-      resample_buffer[ resample_buffer_ofs++ ] = mch / 2 / gain;
+      resample_buffer[ resample_buffer_ofs++ ] = mch / gain;
       source_buffer_ofs += 1;
 
     }
