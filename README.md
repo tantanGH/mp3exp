@@ -4,10 +4,10 @@ ADPCM/PCM/WAV/MP3 player for X680x0/Human68k
 以下の形式のファイルを再生するプレーヤーです。ファイルの種別は拡張子で判断します。
 
  - X68k(MSM6258V) ADPCM 15.6kHz mono (.PCM)
- - 16bit符号付き raw PCM (.S32/.S44/.S48/.M32/.M44/.M48)
- - 16bit符号付き YM2608 ADPCM (.A32/.A44/.A48/.N32/.N44/.N48)
+ - 16bit符号付き big endian raw PCM (.S32/.S44/.S48/.M32/.M44/.M48)
  - 16bit符号付き WAV (.WAV)
- - MP3 (.MP3)
+ - 4bit符号付き YM2608 ADPCM (.A32/.A44/.A48/.N32/.N44/.N48)
+ - 固定/可変ビットレート MP3 (.MP3)
 
 MP3のアルバムアート表示(JPEG/PNG)に対応しています。
 
