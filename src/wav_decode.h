@@ -26,5 +26,6 @@ int32_t wav_decode_init(WAV_DECODE_HANDLE* wav);
 void wav_decode_close(WAV_DECODE_HANDLE* wav);
 int32_t wav_decode_parse_header(WAV_DECODE_HANDLE* wav, FILE* fp);
 size_t wav_decode_resample(WAV_DECODE_HANDLE* wav, int16_t* resample_buffer, int32_t resample_freq, int16_t* source_buffer, size_t source_buffer_len, int16_t gain);
+size_t wav_decode_convert_endian(WAV_DECODE_HANDLE* wav, int16_t* resample_buffer, int16_t* source_buffer, size_t source_buffer_len);
 
 #endif

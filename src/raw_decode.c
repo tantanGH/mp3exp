@@ -114,8 +114,7 @@ size_t raw_decode_resample(RAW_DECODE_HANDLE* pcm, int16_t* resample_buffer, int
         // little endian
         uint8_t* source_buffer_uint8 = (uint8_t*)(&(source_buffer[ source_buffer_ofs ]));
         int16_t mch = (int16_t)(source_buffer_uint8[1] * 256 + source_buffer_uint8[0]);
-        int16_t x = mch / 2 / gain;
-        resample_buffer[ resample_buffer_ofs++ ] = mch / 2 / gain;
+        resample_buffer[ resample_buffer_ofs++ ] = mch / gain;
         source_buffer_ofs += 1;
 
       }
@@ -135,6 +134,74 @@ size_t raw_decode_resample(RAW_DECODE_HANDLE* pcm, int16_t* resample_buffer, int
 
         // big endian
         resample_buffer[ resample_buffer_ofs++ ] = source_buffer[ source_buffer_ofs++ ] / gain;
+
+      }
+
+    }
+
+  }
+
+  return resample_buffer_ofs;
+}
+
+//
+//  endian conversion
+//
+size_t raw_decode_convert_endian(RAW_DECODE_HANDLE* pcm, int16_t* resample_buffer, int16_t* source_buffer, size_t source_buffer_len) {
+
+  // resampling
+  size_t source_buffer_ofs = 0;
+  size_t resample_buffer_ofs = 0;
+  
+  if (pcm->channels == 2) {
+
+    if (pcm->little_endian) {
+
+      while (source_buffer_ofs < source_buffer_len) {
+      
+        // little endian
+        uint8_t* source_buffer_uint8 = (uint8_t*)(&(source_buffer[ source_buffer_ofs ]));
+        int16_t lch = (int16_t)(source_buffer_uint8[1] * 256 + source_buffer_uint8[0]);
+        int16_t rch = (int16_t)(source_buffer_uint8[3] * 256 + source_buffer_uint8[2]);
+        resample_buffer[ resample_buffer_ofs++ ] = lch;
+        resample_buffer[ resample_buffer_ofs++ ] = rch;
+        source_buffer_ofs += 2;
+
+      }
+
+    } else {
+
+      while (source_buffer_ofs < source_buffer_len) {
+
+        int16_t lch = source_buffer[ source_buffer_ofs++ ];
+        int16_t rch = source_buffer[ source_buffer_ofs++ ];
+        resample_buffer[ resample_buffer_ofs++ ] = lch;
+        resample_buffer[ resample_buffer_ofs++ ] = rch;
+
+      }
+
+    }
+
+  } else {
+
+    if (pcm->little_endian) {
+
+      while (source_buffer_ofs < source_buffer_len) {
+    
+        // little endian
+        uint8_t* source_buffer_uint8 = (uint8_t*)(&(source_buffer[ source_buffer_ofs ]));
+        int16_t mch = (int16_t)(source_buffer_uint8[1] * 256 + source_buffer_uint8[0]);
+        resample_buffer[ resample_buffer_ofs++ ] = mch;
+        source_buffer_ofs += 1;
+
+      }
+
+    } else {
+
+      while (source_buffer_ofs < source_buffer_len) {
+
+        // big endian
+        resample_buffer[ resample_buffer_ofs++ ] = source_buffer[ source_buffer_ofs++ ];
 
       }
 

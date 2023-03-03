@@ -227,3 +227,43 @@ size_t wav_decode_resample(WAV_DECODE_HANDLE* wav, int16_t* resample_buffer, int
 
   return resample_buffer_ofs;
 }
+
+//
+//  endian conversion
+//
+size_t wav_decode_convert_endian(WAV_DECODE_HANDLE* wav, int16_t* resample_buffer, int16_t* source_buffer, size_t source_buffer_len) {
+
+  // resampling
+  size_t source_buffer_ofs = 0;
+  size_t resample_buffer_ofs = 0;
+  
+  if (wav->channels == 2) {
+  
+    while (source_buffer_ofs < source_buffer_len) {
+    
+      // little endian
+      uint8_t* source_buffer_uint8 = (uint8_t*)(&(source_buffer[ source_buffer_ofs ]));
+      int16_t lch = (int16_t)(source_buffer_uint8[1] * 256 + source_buffer_uint8[0]);
+      int16_t rch = (int16_t)(source_buffer_uint8[3] * 256 + source_buffer_uint8[2]);
+      resample_buffer[ resample_buffer_ofs++ ] = lch;
+      resample_buffer[ resample_buffer_ofs++ ] = rch;
+      source_buffer_ofs += 2;
+
+    }
+
+  } else {
+
+    while (source_buffer_ofs < source_buffer_len) {
+  
+      // little endian
+      uint8_t* source_buffer_uint8 = (uint8_t*)(&(source_buffer[ source_buffer_ofs ]));
+      int16_t mch = (int16_t)(source_buffer_uint8[1] * 256 + source_buffer_uint8[0]);
+      resample_buffer[ resample_buffer_ofs++ ] = mch;
+      source_buffer_ofs += 1;
+
+    }
+
+  }
+
+  return resample_buffer_ofs;
+}

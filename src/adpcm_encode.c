@@ -101,19 +101,6 @@ int32_t adpcm_encode_init(ADPCM_ENCODE_HANDLE* adpcm) {
   adpcm->num_samples = 0;
   adpcm->resample_counter = 0;
 
-//  adpcm->use_high_memory = 0;     // use main memory only
-//  adpcm->current_buffer_id = 0;
-//  adpcm->buffer_count = buffer_count;
-//  adpcm->buffer_bytes = ADPCM_BUFFER_SIZE;
-//  adpcm->buffer_ofs = 0;
-
-//  for (int16_t i = 0; i < adpcm->buffer_count; i++) {
-//    adpcm->buffers[i] = himem_malloc(adpcm->buffer_bytes, adpcm->use_high_memory);
-//    if (adpcm->buffers[i] == NULL) {
-//      goto exit;
-//    }
-//  }
-
   rc = 0;
 
 exit:
@@ -125,23 +112,7 @@ exit:
 //
 void adpcm_encode_close(ADPCM_ENCODE_HANDLE* adpcm) {
 
-  // reclaim buffers
-//  for (int16_t i = 0; i < adpcm->buffer_count; i++) {
-//    if (adpcm->buffers[i] != NULL) {
-//      himem_free(adpcm->buffers[i], adpcm->use_high_memory);
-//      adpcm->buffers[i] = NULL;
-//    }
-//  }
 }
-
-//
-//  select next buffer
-//
-//void adpcm_encode_next_buffer(ADPCM_ENCODE_HANDLE* adpcm) {
-//  int16_t id = adpcm->current_buffer_id;
-//  adpcm->current_buffer_id = (id + 1) % adpcm->buffer_count;
-//  adpcm->buffer_ofs = 0;
-//}
 
 //
 //  execute adpcm encoding with resample
@@ -202,54 +173,3 @@ int32_t adpcm_encode_resample(ADPCM_ENCODE_HANDLE* adpcm, uint8_t* adpcm_buffer,
 
   return adpcm_buffer_ofs;
 }
-
-/*
-//
-//  resampling
-//
-size_t adpcm_encode_resample(ADPCM_ENCODE_HANDLE* adpcm, int16_t* convert_buffer, int16_t* source_buffer, size_t source_buffer_len, int32_t source_pcm_freq, int16_t source_pcm_channels, int16_t gain) {
-
-  size_t convert_buffer_ofs = 0;
-  size_t source_buffer_ofs = 0;
-
-  if (source_pcm_channels == 2) {
-
-    while (source_buffer_ofs < source_buffer_len) {
-    
-      // down sampling
-      adpcm->resample_counter += 15625;                 // need to preserve processed count for better accuracy
-      if (adpcm->resample_counter < source_pcm_freq) {
-        source_buffer_ofs += source_pcm_channels;     // skip
-        continue;
-      }
-
-      adpcm->resample_counter -= source_pcm_freq;
-    
-      int16_t x = ( (int32_t)(source_buffer[ source_buffer_ofs ]) + (int32_t)(source_buffer[ source_buffer_ofs + 1 ]) ) / 2 / gain;
-      convert_buffer[ convert_buffer_ofs++ ] = x;
-      source_buffer_ofs += 2;
-
-    }
-
-  } else {
-
-    while (source_buffer_ofs < source_buffer_len) {
-    
-      // down sampling
-      adpcm->resample_counter += 15625;                 // need to preserve processed count for better accuracy
-      if (adpcm->resample_counter < source_pcm_freq) {
-        source_buffer_ofs += source_pcm_channels;     // skip
-        continue;
-      }
-
-      adpcm->resample_counter -= source_pcm_freq;
-
-      convert_buffer[ convert_buffer_ofs++ ] = source_buffer[ source_buffer_ofs++ ] / gain;
-
-    }
-
-  }
-
-  return convert_buffer_ofs;
-}
-*/

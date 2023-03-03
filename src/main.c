@@ -643,15 +643,16 @@ try:
           }
           chain_tables[i].buffer_bytes = fread_len * sizeof(int16_t);
         } else {
-          // little endian ... need endian conversion with resampling method
-          size_t fread_len = fread(fread_buffer, sizeof(int16_t), fread_buffer_len, fp);  
-          if (fread_len < fread_buffer_len) {
+          // little endian ... need endian conversion
+          size_t buffer_len = CHAIN_TABLE_BUFFER_BYTES / sizeof(int16_t);
+          size_t fread_len = fread(fread_buffer, sizeof(int16_t), buffer_len, fp);  
+          if (fread_len < buffer_len) {
             chain_tables[i].next = NULL;
             end_flag = 1;
           }
-          // resample as endian conversion
+          // endian conversion
           size_t resampled_len = 
-            raw_decode_resample(&raw_decoder, chain_tables[i].buffer, pcm_freq, fread_buffer, fread_len, 1);
+            raw_decode_convert_endian(&raw_decoder, chain_tables[i].buffer, fread_buffer, fread_len);
           chain_tables[i].buffer_bytes = resampled_len * sizeof(int16_t);
         }
 
@@ -671,15 +672,16 @@ try:
       } else if (input_format == FORMAT_WAV) {
 
         // WAV with PCM8PP
-        size_t fread_len = fread(fread_buffer, sizeof(int16_t), fread_buffer_len, fp);  
-        if (fread_len < fread_buffer_len) {
+        size_t buffer_len = CHAIN_TABLE_BUFFER_BYTES / sizeof(int16_t);
+        size_t fread_len = fread(fread_buffer, sizeof(int16_t), buffer_len, fp);  
+        if (fread_len < buffer_len) {
           chain_tables[i].next = NULL;
           end_flag = 1;
         }
 
         // resample as endian conversion (wav is little only)
         size_t resampled_len = 
-          wav_decode_resample(&wav_decoder, chain_tables[i].buffer, pcm_freq, fread_buffer, fread_len, 1);
+          wav_decode_convert_endian(&wav_decoder, chain_tables[i].buffer, fread_buffer, fread_len);
         chain_tables[i].buffer_bytes = resampled_len * sizeof(int16_t);
 
       } else if (input_format == FORMAT_MP3) {
@@ -1021,14 +1023,15 @@ try:
             cta->buffer_bytes = fread_len * sizeof(int16_t);
           } else {
             // little endian ... need endian conversion with resampling method
-            size_t fread_len = fread(fread_buffer, sizeof(int16_t), fread_buffer_len, fp);  
-            if (fread_len < fread_buffer_len) {
+            size_t buffer_len = CHAIN_TABLE_BUFFER_BYTES / sizeof(int16_t);
+            size_t fread_len = fread(fread_buffer, sizeof(int16_t), buffer_len, fp);  
+            if (fread_len < buffer_len) {
               cta->next = NULL;
               end_flag = 1;
             }
-            // resample as endian conversion
+            // endian conversion
             size_t resampled_len = 
-              raw_decode_resample(&raw_decoder, cta->buffer, pcm_freq, fread_buffer, fread_len, 1);
+              raw_decode_convert_endian(&raw_decoder, cta->buffer, fread_buffer, fread_len);
             cta->buffer_bytes = resampled_len * sizeof(int16_t);
           }
 
@@ -1048,15 +1051,16 @@ try:
         } else if (input_format == FORMAT_WAV) {
 
           // WAV with PCM8PP
-          size_t fread_len = fread(fread_buffer, sizeof(int16_t), fread_buffer_len, fp);  
-          if (fread_len < fread_buffer_len) {
+          size_t buffer_len = CHAIN_TABLE_BUFFER_BYTES / sizeof(int16_t);
+          size_t fread_len = fread(fread_buffer, sizeof(int16_t), buffer_len, fp);  
+          if (fread_len < buffer_len) {
             cta->next = NULL;
             end_flag = 1;
           }
 
-          // resample as endian conversion (wav is little only)
+          // endian conversion (wav is little only)
           size_t resampled_len = 
-            wav_decode_resample(&wav_decoder, cta->buffer, pcm_freq, fread_buffer, fread_len, 1);
+            wav_decode_convert_endian(&wav_decoder, cta->buffer, fread_buffer, fread_len);
           cta->buffer_bytes = resampled_len * sizeof(int16_t);
 
         } else if (input_format == FORMAT_MP3) {
