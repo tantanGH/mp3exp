@@ -1,11 +1,11 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
-#include "mp3.h"
 #include "himem.h"
 #include "utf16_cp932.h"
 #include "nanojpeg.h"
 #include "png.h"
+#include "mp3_decode.h"
 
 //
 //  inline helper: 24bit signed int to 16bit signed int
@@ -42,9 +42,9 @@ static inline int16_t scale_12bit(mad_fixed_t sample) {
 }
 
 //
-//  init decoder handle
+//  init mp3 decoder handle
 //
-int32_t mp3_init(MP3_DECODE_HANDLE* decode) {
+int32_t mp3_decode_init(MP3_DECODE_HANDLE* decode) {
 
   // baseline
   decode->mp3_data = NULL;
@@ -76,7 +76,7 @@ int32_t mp3_init(MP3_DECODE_HANDLE* decode) {
 //
 //  close decoder handle
 //
-void mp3_close(MP3_DECODE_HANDLE* decode) {
+void mp3_decode_close(MP3_DECODE_HANDLE* decode) {
 
   mad_synth_finish(&(decode->mad_synth));
   mad_frame_finish(&(decode->mad_frame));
@@ -117,7 +117,7 @@ static void convert_utf16_to_cp932(uint8_t* cp932_buffer, uint8_t* utf16_buffer,
 //
 //  parse ID3v2 tags
 //
-int32_t mp3_parse_tags(MP3_DECODE_HANDLE* decode, int16_t pic_brightness, int16_t pic_half_size, FILE* fp) {
+int32_t mp3_decode_parse_tags(MP3_DECODE_HANDLE* decode, int16_t pic_brightness, int16_t pic_half_size, FILE* fp) {
 
   // read the first 10 bytes of the MP3 file
   uint8_t mp3_header[10];
@@ -312,7 +312,6 @@ int32_t mp3_decode_resample(MP3_DECODE_HANDLE* decode, int16_t* resample_buffer,
       }
 
       decode->mad_frame.options = decode->mp3_frame_options;
-      //printf("mad_frame.options=%d\n",decode->mad_frame.options);
       mad_synth_frame(&(decode->mad_synth), &(decode->mad_frame));
       mad_timer_add(&(decode->mad_timer), decode->mad_frame.header.duration);
 
@@ -347,12 +346,6 @@ int32_t mp3_decode_resample(MP3_DECODE_HANDLE* decode, int16_t* resample_buffer,
         resample_buffer[ resample_ofs++ ] = ( scale_16bit(pcm->samples[0][i]) + scale_16bit(pcm->samples[1][i]) ) / 2 / 16;
         decode->resample_counter -= pcm->samplerate;
 
-        // up sampling for low quality mode
-//        if (decode->resample_counter >= pcm->samplerate) {
-//          resample_buffer[ resample_ofs++ ] = ( scale_16bit(pcm->samples[0][i]) + scale_16bit(pcm->samples[1][i]) ) / 2 / 16;
-//          decode->resample_counter -= pcm->samplerate;
-//        }
-
       }
 
     } else {
@@ -368,11 +361,6 @@ int32_t mp3_decode_resample(MP3_DECODE_HANDLE* decode, int16_t* resample_buffer,
         resample_buffer[ resample_ofs++ ] = scale_12bit(pcm->samples[0][i]);
         decode->resample_counter -= pcm->samplerate;
 
-        // up sampling for low quality mode
-//        if (decode->resample_counter >= pcm->samplerate) {
-//          resample_buffer[ resample_ofs++ ] = scale_12bit(pcm->samples[0][i]);
-//          decode->resample_counter -= pcm->samplerate;
-//        }
       }
 
     }
@@ -443,35 +431,16 @@ int32_t mp3_decode_full(MP3_DECODE_HANDLE* decode, int16_t* decode_buffer, size_
     if (pcm->channels == 2) {
 
       for (int32_t i = 0; i < pcm->length; i++) {
-
-        // down sampling
-//        decode->resample_counter += resample_freq;
-//        if (decode->resample_counter < pcm->samplerate) {
-//          continue;
-//        }
-
-//        decode->resample_counter -= pcm->samplerate;
-    
         // stereo data
         decode_buffer[ decode_ofs++ ] = scale_16bit(pcm->samples[0][i]);
         decode_buffer[ decode_ofs++ ] = scale_16bit(pcm->samples[1][i]);
-
       }
 
     } else {
 
       for (int32_t i = 0; i < pcm->length; i++) {
-
-        // down sampling
-//        decode->resample_counter += resample_freq;
-//        if (decode->resample_counter < pcm->samplerate) {
-//          continue;
-//        }
-
-//        decode->resample_counter -= pcm->samplerate;
-    
+        // mono data
         decode_buffer[ decode_ofs++ ] = scale_16bit(pcm->samples[0][i]);
-
       }
 
     }

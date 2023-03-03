@@ -1,5 +1,5 @@
-#ifndef __H_MP3__
-#define __H_MP3__
+#ifndef __H_MP3_DECODE__
+#define __H_MP3_DECODE__
 
 #include <stdio.h>
 #include <stdint.h>
@@ -11,7 +11,6 @@ typedef struct mad_synth MAD_SYNTH;
 typedef struct mad_header MAD_HEADER;
 typedef struct mad_pcm MAD_PCM;
 typedef struct mad_frame MAD_FRAME;
-//typedef struct mad_decoder MAD_DECODER;
 typedef mad_timer_t MAD_TIMER;
 
 typedef struct {
@@ -39,9 +38,9 @@ typedef struct {
 
 } MP3_DECODE_HANDLE;
 
-int32_t mp3_init(MP3_DECODE_HANDLE* decode);
-void mp3_close(MP3_DECODE_HANDLE* decode);
-int32_t mp3_parse_tags(MP3_DECODE_HANDLE* decode, int16_t pic_brightness, int16_t pic_half_size, FILE* fp);
+int32_t mp3_decode_init(MP3_DECODE_HANDLE* decode);
+void mp3_decode_close(MP3_DECODE_HANDLE* decode);
+int32_t mp3_decode_parse_tags(MP3_DECODE_HANDLE* decode, int16_t pic_brightness, int16_t pic_half_size, FILE* fp);
 int32_t mp3_decode_setup(MP3_DECODE_HANDLE* decode, void* mp3_data, size_t mp3_data_len, int16_t mp3_quality);
 int32_t mp3_decode_resample(MP3_DECODE_HANDLE* decode, int16_t* resample_buffer, size_t resample_buffer_len, int16_t resample_freq, size_t* resampled_len);
 int32_t mp3_decode_full(MP3_DECODE_HANDLE* decode, int16_t* decode_buffer, size_t decode_buffer_bytes, size_t* decoded_bytes);

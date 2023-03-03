@@ -1,7 +1,7 @@
 
 		include	iocscall.mac
 		include	doscall.mac
-		include	nas_macro.h
+		include	ym2608_adpcmlib.mac
 
 		.xdef	ptoa_make_buffer
 		.xdef	ptoa_init

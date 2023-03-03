@@ -7,7 +7,7 @@
 #include "himem.h"
 #include "kmd.h"
 
-static uint8_t BLANKS[] = "                                                                                ";
+static uint8_t BLANKS[] = "                                                                                                      ";
 
 //
 //  initialize kmd handle
@@ -100,13 +100,13 @@ void kmd_erase_event_message(KMD_HANDLE* kmd, KMD_EVENT* event) {
   static uint8_t xs[128];
   if (kmd != NULL && event != NULL) {
     if (event->pos_y == 0) {
-      sprintf(xs, "\r\x1b[%dC%s\r", event->pos_x + 1, BLANKS + strlen(BLANKS) - strlen(event->message));
+      sprintf(xs, "\r\x1b[%dC%s\r", event->pos_x * 2 + 1, BLANKS + strlen(BLANKS) - strlen(event->message));
       B_PRINT(xs);
     } else if (event->pos_y == 1) {
-      sprintf(xs, "\r\x1b[%dC%s\r", event->pos_x + 1, BLANKS + strlen(BLANKS) - strlen(event->message));
+      sprintf(xs, "\r\x1b[%dC%s\r", event->pos_x * 2 + 1, BLANKS + strlen(BLANKS) - strlen(event->message));
       B_PRINT(xs);
     } else if (event->pos_y == 2) {
-      sprintf(xs, "\n\r\x1b[%dC%s\x1b[1A\r", event->pos_x + 1, BLANKS + strlen(BLANKS) - strlen(event->message));
+      sprintf(xs, "\n\r\x1b[%dC%s\x1b[1A\r", event->pos_x * 2 + 1, BLANKS + strlen(BLANKS) - strlen(event->message));
       B_PRINT(xs);
     }
   }
@@ -119,13 +119,13 @@ void kmd_print_event_message(KMD_HANDLE* kmd, KMD_EVENT* event) {
   static uint8_t xs[128];
   if (kmd != NULL && event != NULL) {
     if (event->pos_y == 0) {
-      sprintf(xs, "\r\x1b[%dC%s\r", event->pos_x + 1, event->message);
+      sprintf(xs, "\r\x1b[%dC%s\r", event->pos_x * 2 + 1, event->message);
       B_PRINT(xs);
     } else if (event->pos_y == 1) {
-      sprintf(xs, "\r\x1b[%dC%s\r", event->pos_x + 1, event->message);
+      sprintf(xs, "\r\x1b[%dC%s\r", event->pos_x * 2 + 1, event->message);
       B_PRINT(xs);
     } else if (event->pos_y == 2) {
-      sprintf(xs, "\n\r\x1b[%dC%s\x1b[1A\r", event->pos_x + 1, event->message);
+      sprintf(xs, "\n\r\x1b[%dC%s\x1b[1A\r", event->pos_x * 2 + 1, event->message);
       B_PRINT(xs);
     }
   }

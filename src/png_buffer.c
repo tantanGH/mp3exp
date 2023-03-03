@@ -1,7 +1,7 @@
 #include <string.h>
 
-#include "buffer.h"
 #include "himem.h"
+#include "png_buffer.h"
 
 //
 //  open buffer
