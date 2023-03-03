@@ -1,11 +1,11 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
-#include "mp3.h"
 #include "himem.h"
 #include "utf16_cp932.h"
 #include "nanojpeg.h"
 #include "png.h"
+#include "mp3_decode.h"
 
 //
 //  inline helper: 24bit signed int to 16bit signed int
@@ -42,9 +42,9 @@ static inline int16_t scale_12bit(mad_fixed_t sample) {
 }
 
 //
-//  init decoder handle
+//  init mp3 decoder handle
 //
-int32_t mp3_init(MP3_DECODE_HANDLE* decode) {
+int32_t mp3_decode_init(MP3_DECODE_HANDLE* decode) {
 
   // baseline
   decode->mp3_data = NULL;
@@ -76,7 +76,7 @@ int32_t mp3_init(MP3_DECODE_HANDLE* decode) {
 //
 //  close decoder handle
 //
-void mp3_close(MP3_DECODE_HANDLE* decode) {
+void mp3_decode_close(MP3_DECODE_HANDLE* decode) {
 
   mad_synth_finish(&(decode->mad_synth));
   mad_frame_finish(&(decode->mad_frame));
@@ -117,7 +117,7 @@ static void convert_utf16_to_cp932(uint8_t* cp932_buffer, uint8_t* utf16_buffer,
 //
 //  parse ID3v2 tags
 //
-int32_t mp3_parse_tags(MP3_DECODE_HANDLE* decode, int16_t pic_brightness, int16_t pic_half_size, FILE* fp) {
+int32_t mp3_decode_parse_tags(MP3_DECODE_HANDLE* decode, int16_t pic_brightness, int16_t pic_half_size, FILE* fp) {
 
   // read the first 10 bytes of the MP3 file
   uint8_t mp3_header[10];

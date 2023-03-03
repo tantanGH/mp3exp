@@ -1,13 +1,13 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
-#include "nas_adpcm.h"
 #include "himem.h"
+#include "ym2608_decode.h"
 
 //
-//  init decoder handle
+//  init ADPCM(YM2608) decoder handle
 //
-int32_t nas_adpcm_init(NAS_ADPCM_DECODE_HANDLE* nas, size_t decode_buffer_len, int32_t sample_rate, int16_t channels) {
+int32_t ym2608_decode_init(YM2608_DECODE_HANDLE* nas, size_t decode_buffer_len, int32_t sample_rate, int16_t channels) {
 
   int32_t rc = -1;
 
@@ -25,7 +25,7 @@ int32_t nas_adpcm_init(NAS_ADPCM_DECODE_HANDLE* nas, size_t decode_buffer_len, i
   if (nas->decode_buffer == NULL) goto exit;
 
   // conversion table allocation and initialization
-  nas->conv_table = himem_malloc(NAS_ADPCMLIB_CONV_TABLE_SIZE, 0);
+  nas->conv_table = himem_malloc(ADPCMLIB_CONV_TABLE_SIZE, 0);
   if (nas->conv_table == NULL) goto exit;
 
   register uint32_t reg_a0 asm ("a0") = (uint32_t)(nas->conv_table);
@@ -53,7 +53,7 @@ exit:
 //
 //  close decoder handle
 //
-void nas_adpcm_close(NAS_ADPCM_DECODE_HANDLE* nas) {
+void ym2608_decode_close(YM2608_DECODE_HANDLE* nas) {
   if (nas->decode_buffer != NULL) {
     himem_free(nas->decode_buffer, 0);
     nas->decode_buffer = NULL;
@@ -65,9 +65,9 @@ void nas_adpcm_close(NAS_ADPCM_DECODE_HANDLE* nas) {
 }
 
 //
-//  decode NAS ADPCM stream into the specified buffer
+//  decode ADPCM (YM2608) stream into the specified buffer
 //
-size_t nas_adpcm_decode_buffer(NAS_ADPCM_DECODE_HANDLE* nas, uint8_t* adpcm_data, size_t adpcm_data_bytes, int16_t* decode_buffer, size_t decode_buffer_len) {
+size_t ym2608_decode_exec_buffer(YM2608_DECODE_HANDLE* nas, uint8_t* adpcm_data, size_t adpcm_data_bytes, int16_t* decode_buffer, size_t decode_buffer_len) {
 
   // check decode buffer size
   if (adpcm_data_bytes * 4 / sizeof(int16_t) > decode_buffer_len) return 0;
@@ -89,18 +89,18 @@ size_t nas_adpcm_decode_buffer(NAS_ADPCM_DECODE_HANDLE* nas, uint8_t* adpcm_data
 }
 
 //
-//  decode NAS ADPCM stream into the decoder instance buffer
+//  decode ADPCM (YM2608) stream into the decoder instance buffer
 //
-size_t nas_adpcm_decode(NAS_ADPCM_DECODE_HANDLE* nas, uint8_t* adpcm_data, size_t adpcm_data_bytes) {
+size_t ym2608_decode_exec(YM2608_DECODE_HANDLE* nas, uint8_t* adpcm_data, size_t adpcm_data_bytes) {
   nas->decode_buffer_ofs = 
-    nas_adpcm_decode_buffer(nas, adpcm_data, adpcm_data_bytes, nas->decode_buffer, nas->decode_buffer_len);
+    ym2608_decode_exec_buffer(nas, adpcm_data, adpcm_data_bytes, nas->decode_buffer, nas->decode_buffer_len);
   return nas->decode_buffer_ofs;
 }
 
 //
 //  resampling
 //
-size_t nas_adpcm_resample(NAS_ADPCM_DECODE_HANDLE* nas, int16_t* resample_buffer, int16_t gain) {
+size_t ym2608_decode_resample(YM2608_DECODE_HANDLE* nas, int16_t* resample_buffer, int32_t resample_freq, int16_t gain) {
 
   // resampling
   size_t source_buffer_ofs = 0;
@@ -111,7 +111,7 @@ size_t nas_adpcm_resample(NAS_ADPCM_DECODE_HANDLE* nas, int16_t* resample_buffer
     while (source_buffer_ofs < nas->decode_buffer_ofs) {
     
       // down sampling
-      nas->resample_counter += 15625;
+      nas->resample_counter += resample_freq;
       if (nas->resample_counter < nas->sample_rate) {
         source_buffer_ofs += nas->channels;     // skip
         continue;
@@ -130,7 +130,7 @@ size_t nas_adpcm_resample(NAS_ADPCM_DECODE_HANDLE* nas, int16_t* resample_buffer
     while (source_buffer_ofs < nas->decode_buffer_ofs) {
     
       // down sampling
-      nas->resample_counter += 15625;
+      nas->resample_counter += resample_freq;
       if (nas->resample_counter < nas->sample_rate) {
         source_buffer_ofs += nas->channels;     // skip
         continue;

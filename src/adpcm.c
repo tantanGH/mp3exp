@@ -92,7 +92,7 @@ static uint8_t encode(int16_t current_data, int16_t last_estimate, int16_t* step
 //
 //  initialize adpcm handle
 //
-int32_t adpcm_init(ADPCM_HANDLE* adpcm, int16_t buffer_count, int16_t use_high_memory) {
+int32_t adpcm_init(ADPCM_HANDLE* adpcm, int16_t buffer_count) {
 
   int32_t rc = -1;
 
@@ -101,7 +101,7 @@ int32_t adpcm_init(ADPCM_HANDLE* adpcm, int16_t buffer_count, int16_t use_high_m
   adpcm->num_samples = 0;
   adpcm->resample_counter = 0;
 
-  adpcm->use_high_memory = use_high_memory;
+  adpcm->use_high_memory = 0;
   adpcm->current_buffer_id = 0;
   adpcm->buffer_count = buffer_count;
   adpcm->buffer_bytes = ADPCM_BUFFER_SIZE;

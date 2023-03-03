@@ -5,15 +5,25 @@
 #include <stat.h>
 #include <doslib.h>
 #include <iocslib.h>
+
+// devices
 #include "keyboard.h"
 #include "crtc.h"
 #include "himem.h"
+
+// pcm8
 #include "pcm8.h"
 #include "pcm8a.h"
 #include "pcm8pp.h"
+
+// codec
 #include "adpcm.h"
-#include "nas_adpcm.h"
-#include "mp3.h"
+#include "raw_decode.h"
+#include "wav_decode.h"
+#include "mp3_decode.h"
+#include "ym2608_decode.h"
+
+// application
 #include "kmd.h"
 #include "mp3exp.h"
 
@@ -33,23 +43,27 @@ static void abort_application() {
     B_KEYINP();
   }
  
-  printf("aborted.\n");
+  B_PRINT("aborted.\n");
+
   exit(1);
 }
 
 // show help message
 static void show_help_message() {
-  printf("usage: mp3exp [options] <input-file[.pcm|.s(32|44|48)|.m(32|44|48)|.a(32|44|48)|.n(32|44|48)|.mp3]>\n");
+  printf("usage: mp3exp [options] <input-file[.pcm|.sXX|.mXX|.aXX|.nXX|.wav|.mp3]>\n");
   printf("options:\n");
-  printf("     -a    ... use MP3EXP for ADPCM encoding\n");
-  printf("     -b<n> ... buffer size [x 64KB] (2-96,default:4)\n");
-  printf("     -u    ... use 060turbo/TS-6BE16 high memory for buffering\n");
-  printf("     -l[n] ... loop count (none:infinite, default:1)\n");
+  printf("     -v[n] ... pcm8a/pcm8pp volume (1-15, default:7)\n");
+  printf("     -l[n] ... loop count (none:endless, default:1)\n");
   printf("     -q[n] ... mp3 quality (0:high, 1:normal, 2:low, default:1)\n");
   printf("     -t[n] ... mp3 album art display brightness (1-100, default:off)\n");
   printf("     -x    ... mp3 album art display full size\n");
-  printf("     -v[n] ... pcm8a/pcm8pp volume (1-15, default:7)\n");
-  printf("     -c    ... do not use .s44/.a44 as mp3 cache\n");
+  printf("\n");
+  printf("     -b<n> ... buffer size [x 64KB] (2-96,default:4)\n");
+  printf("     -u    ... use 060turbo/TS-6BE16 high memory\n");
+  printf("\n");
+  printf("     -c    ... do not use .s44/.a44/.wav as mp3 playback cache\n");
+//  printf("     -a    ... use MP3EXP for ADPCM encoding\n");
+  printf("     -z    ... use little endian for .s44/.m44\n");
   printf("     -h    ... show help message\n");
 }
 
@@ -60,38 +74,31 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
   int32_t rc = 1;
 
   // credit
-  printf("MP3EXP.X - ADPCM/PCM/MP3 player for X680x0 version " VERSION " by tantan\n");
+  printf("MP3EXP.X - ADPCM/PCM/WAV/MP3 player for X680x0 version " VERSION " by tantan\n");
 
   // parse command line options
   uint8_t* pcm_file_name = NULL;
-  int16_t encode_with_self = 0;
-  int16_t num_chains = 4;
-  int16_t loop_count = 1;
-  int16_t use_high_memory = 0;
   int32_t adpcm_output_freq = 15625;
+  int16_t pcm8_volume = 7;
+  int16_t loop_count = 1;
   int16_t mp3_quality = 1;
   int16_t mp3_pic_brightness = 0;
   int16_t mp3_pic_half_size = 1;
+  int16_t num_chains = 4;
+  int16_t use_high_memory = 0;
   int16_t mp3_cache_unuse = 0;
-  int16_t pcm8_volume = 7;
+  int16_t use_little_endian = 0;
+  int16_t encode_with_self = 0;
   for (int16_t i = 1; i < argc; i++) {
     if (argv[i][0] == '-' && strlen(argv[i]) >= 2) {
-      if (argv[i][1] == 'a') {
-        encode_with_self = 1;
-      } else if (argv[i][1] == 'b') {
-        num_chains = atoi(argv[i]+2);
-        if (num_chains < 2 || num_chains > 96) {
+      if (argv[i][1] == 'v') {
+        pcm8_volume = atoi(argv[i]+2);
+        if (pcm8_volume < 1 || pcm8_volume > 15 || strlen(argv[i]) < 3) {
           show_help_message();
           goto exit;
         }
       } else if (argv[i][1] == 'l') {
         loop_count = atoi(argv[i]+2);
-      } else if (argv[i][1] == 'u') {
-        if (!himem_isavailable()) {
-          printf("error: high memory driver is not installed.\n");
-          goto exit;
-        }
-        use_high_memory = 1;
       } else if (argv[i][1] == 'q') {
         mp3_quality = atoi(argv[i]+2);
         if (mp3_quality < 0 || mp3_quality > 2 || strlen(argv[i]) < 3) {
@@ -106,23 +113,33 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
         }
       } else if (argv[i][1] == 'x') {
         mp3_pic_half_size = 0;
-      } else if (argv[i][1] == 'c') {
-        mp3_cache_unuse = 1;
-      } else if (argv[i][1] == 'v') {
-        pcm8_volume = atoi(argv[i]+2);
-        if (pcm8_volume < 1 || pcm8_volume > 15 || strlen(argv[i]) < 3) {
+      } else if (argv[i][1] == 'b') {
+        num_chains = atoi(argv[i]+2);
+        if (num_chains < 2 || num_chains > 96) {
           show_help_message();
           goto exit;
         }
-      } else if (argv[i][1] == 'o') {
-        int16_t out_freq = atoi(argv[i]+2);
-        if (out_freq == 2) {
-          adpcm_output_freq = 7812;
-        } else if (out_freq == 1) {
-          adpcm_output_freq = 10417;
-        } else {
-          adpcm_output_freq = 15625;
+      } else if (argv[i][1] == 'u') {
+        if (!himem_isavailable()) {
+          printf("error: high memory driver is not installed.\n");
+          goto exit;
         }
+        use_high_memory = 1;
+      } else if (argv[i][1] == 'c') {
+        mp3_cache_unuse = 1;
+      } else if (argv[i][1] == 'z') {
+        use_little_endian = 1;
+//      } else if (argv[i][1] == 'o') {
+//        int16_t out_freq = atoi(argv[i]+2);
+//        if (out_freq == 2) {
+//          adpcm_output_freq = 7812;
+//        } else if (out_freq == 1) {
+//          adpcm_output_freq = 10417;
+//        } else {
+//          adpcm_output_freq = 15625;
+//        }
+      } else if (argv[i][1] == 'a') {
+        encode_with_self = 1;
       } else if (argv[i][1] == 'h') {
         show_help_message();
         goto exit;
@@ -151,82 +168,87 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
   static uint8_t pcm_cache_file_name[ MAX_PATH_LEN ];
 
   // input format check
+  int16_t input_format = FORMAT_ADPCM;
   int32_t pcm_freq = 15625;
   int16_t pcm_channels = 1;
   int16_t pcm_gain = encode_with_self ? 1 : 16; 
-  int16_t decode_mode = DECODE_MODE_NONE;
   int16_t encode_mode = ENCODE_MODE_NONE;
   int16_t use_mp3_cache = 0;
   if (stricmp(".pcm", pcm_file_exp) == 0) {
+    input_format = FORMAT_ADPCM;
     pcm_freq = 15625;                 // fixed
     pcm_channels = 1;
-    decode_mode = DECODE_MODE_NONE;
     encode_mode = ENCODE_MODE_NONE;
     adpcm_output_freq = 15625;        // fixed
   } else if (stricmp(".s32", pcm_file_exp) == 0) {
+    input_format = FORMAT_RAW;
     pcm_freq = 32000;
     pcm_channels = 2;
-    decode_mode = DECODE_MODE_RESAMPLE;
     encode_mode = ENCODE_MODE_SELF;
   } else if (stricmp(".s44", pcm_file_exp) == 0) {
+    input_format = FORMAT_RAW;
     pcm_freq = 44100;
     pcm_channels = 2;
-    decode_mode = DECODE_MODE_RESAMPLE;
     encode_mode = ENCODE_MODE_SELF;
   } else if (stricmp(".s48", pcm_file_exp) == 0) {
+    input_format = FORMAT_RAW;
     pcm_freq = 48000;
     pcm_channels = 2;
-    decode_mode = DECODE_MODE_RESAMPLE;
     encode_mode = ENCODE_MODE_SELF;
   } else if (stricmp(".m32", pcm_file_exp) == 0) {
+    input_format = FORMAT_RAW;
     pcm_freq = 32000;
     pcm_channels = 1;
-    decode_mode = DECODE_MODE_RESAMPLE;
     encode_mode = ENCODE_MODE_SELF;
   } else if (stricmp(".m44", pcm_file_exp) == 0) {
+    input_format = FORMAT_RAW;
     pcm_freq = 44100;
     pcm_channels = 1;
-    decode_mode = DECODE_MODE_RESAMPLE;
     encode_mode = ENCODE_MODE_SELF;
   } else if (stricmp(".m48", pcm_file_exp) == 0) {
+    input_format = FORMAT_RAW;
     pcm_freq = 48000;
     pcm_channels = 1;
-    decode_mode = DECODE_MODE_RESAMPLE;
     encode_mode = ENCODE_MODE_SELF;
   } else if (stricmp(".a32", pcm_file_exp) == 0) {
+    input_format = FORMAT_YM2608;
     pcm_freq = 32000;
     pcm_channels = 2;
-    decode_mode = DECODE_MODE_NAS_ADPCM;
     encode_mode = ENCODE_MODE_SELF;
   } else if (stricmp(".a44", pcm_file_exp) == 0) {
+    input_format = FORMAT_YM2608;
     pcm_freq = 44100;
     pcm_channels = 2;
-    decode_mode = DECODE_MODE_NAS_ADPCM;
     encode_mode = ENCODE_MODE_SELF;
   } else if (stricmp(".a48", pcm_file_exp) == 0) {
+    input_format = FORMAT_YM2608;
     pcm_freq = 48000;
     pcm_channels = 2;
-    decode_mode = DECODE_MODE_NAS_ADPCM;
     encode_mode = ENCODE_MODE_SELF;
   } else if (stricmp(".n32", pcm_file_exp) == 0) {
+    input_format = FORMAT_YM2608;
     pcm_freq = 32000;
     pcm_channels = 1;
-    decode_mode = DECODE_MODE_NAS_ADPCM;
     encode_mode = ENCODE_MODE_SELF;
   } else if (stricmp(".n44", pcm_file_exp) == 0) {
+    input_format = FORMAT_YM2608;
     pcm_freq = 44100;
     pcm_channels = 1;
-    decode_mode = DECODE_MODE_NAS_ADPCM;
     encode_mode = ENCODE_MODE_SELF;
   } else if (stricmp(".n48", pcm_file_exp) == 0) {
+    input_format = FORMAT_YM2608;
     pcm_freq = 48000;
     pcm_channels = 1;
-    decode_mode = DECODE_MODE_NAS_ADPCM;
     encode_mode = ENCODE_MODE_SELF;
-  } else if (stricmp(".mp3", pcm_file_exp) == 0) {
+  } else if (stricmp(".wav", pcm_file_exp) == 0) {
+    input_format = FORMAT_WAV;
     pcm_freq = -1;
     pcm_channels = -1;
-    decode_mode = DECODE_MODE_MP3;
+    encode_mode = ENCODE_MODE_SELF;
+  } else if (stricmp(".mp3", pcm_file_exp) == 0) {
+    input_format = FORMAT_MP3;
+    pcm_freq = -1;
+    pcm_channels = -1;
     encode_mode = ENCODE_MODE_PCM8A;
 
     // in case of quarter frequency mode, use 10.417kHz internal ADPCM
@@ -234,45 +256,49 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
       adpcm_output_freq = 10417;
     }
 
-    // check s44/a44/m44/n44 file existence for cache use
+    // check s44/a44/m44/n44/wav file existence for cache use
     if (!mp3_cache_unuse) {
       struct stat stat_buf;
       strcpy(pcm_cache_file_name, pcm_file_name);
       do {
         strcpy(pcm_cache_file_name + strlen(pcm_cache_file_name) - 4, ".s44");
         if (stat(pcm_cache_file_name, &stat_buf) == 0) {
+          input_format = FORMAT_RAW;
           pcm_freq = 44100;
           pcm_channels = 2;
-          decode_mode = DECODE_MODE_RESAMPLE;
           use_mp3_cache = 1;
-          mp3_quality = 0;
           break;
         }
         strcpy(pcm_cache_file_name + strlen(pcm_cache_file_name) - 4, ".a44");
         if (stat(pcm_cache_file_name, &stat_buf) == 0) {
+          input_format = FORMAT_YM2608;
           pcm_freq = 44100;
           pcm_channels = 2;
-          decode_mode = DECODE_MODE_NAS_ADPCM;
           use_mp3_cache = 1;
-          mp3_quality = 0;
           break;
         }
         strcpy(pcm_cache_file_name + strlen(pcm_cache_file_name) - 4, ".m44");
         if (stat(pcm_cache_file_name, &stat_buf) == 0) {
+          input_format = FORMAT_RAW;
           pcm_freq = 44100;
           pcm_channels = 1;
-          decode_mode = DECODE_MODE_RESAMPLE;
           use_mp3_cache = 1;
-          mp3_quality = 0;
           break;
         }
         strcpy(pcm_cache_file_name + strlen(pcm_cache_file_name) - 4, ".n44");
         if (stat(pcm_cache_file_name, &stat_buf) == 0) {
+          input_format = FORMAT_YM2608;
           pcm_freq = 44100;
           pcm_channels = 1;
-          decode_mode = DECODE_MODE_NAS_ADPCM;
           use_mp3_cache = 1;
-          mp3_quality = 0;
+          break;
+        }
+        strcpy(pcm_cache_file_name + strlen(pcm_cache_file_name) - 4, ".wav");
+        if (stat(pcm_cache_file_name, &stat_buf) == 0) {
+          input_format = FORMAT_WAV;
+          pcm_freq = -1;
+          pcm_channels = -1;
+          use_mp3_cache = 1;
           break;
         }
         pcm_cache_file_name[0] = '\0';
@@ -326,31 +352,28 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
     pcm8_type = PCM8_TYPE_PCM8;
   }
 
+  // PCM8A/PCM8PP is mandatory for MP3/WAV/ADPCM(YM2608)
+  if (input_format == FORMAT_MP3 || input_format == FORMAT_WAV || input_format == FORMAT_YM2608) {
+    if (pcm8_type != PCM8_TYPE_PCM8A && pcm8_type != PCM8_TYPE_PCM8PP) {
+      printf("error: PCM8A (>=1.02) or PCM8PP (>=0.83d) is required for MP3/WAV/ADPCM(YM2608) playback.\n");
+      goto exit;    
+    }
+  }
+
   // can we use PCM8A/PCM8PP for encode?
-  if (encode_mode != ENCODE_MODE_NONE && !encode_with_self) {
+//  if (encode_mode != ENCODE_MODE_NONE && !encode_with_self) {
+  if (encode_mode != ENCODE_MODE_NONE) {
     if (pcm8_type == PCM8_TYPE_PCM8PP) {
       encode_mode = ENCODE_MODE_PCM8PP;
-      if (decode_mode == DECODE_MODE_RESAMPLE) {
-        decode_mode = DECODE_MODE_NONE;
-      }
-      //if (decode_mode == DECODE_MODE_MP3 && mp3_quality == 2) {
-      //  printf("error: MP3 with PCM8PP does not support low quality mode.\n");
-      //  goto exit;
-      //}
+//      if (decode_mode == DECODE_MODE_RESAMPLE) {
+//        decode_mode = DECODE_MODE_NONE;
+//      }
     } else if (pcm8_type == PCM8_TYPE_PCM8A) {
       encode_mode = ENCODE_MODE_PCM8A;
     } else {
-      if (decode_mode == DECODE_MODE_MP3) {
-        printf("error: PCM8A (>=1.02) or PCM8PP (>=0.83d) is required for MP3 playback.\n");
-        goto exit;
-      } else if (decode_mode == DECODE_MODE_NAS_ADPCM) {
-        printf("error: PCM8A (>=1.02) or PCM8PP (>=0.83d) is required for YM2608 ADPCM playback.\n");
-        goto exit;
-      } else {
-        printf("\n<<warning>> PCM8A/PCM8PP is not running. Use MP3EXP for ADPCM encoding.\n");
-        encode_mode = ENCODE_MODE_SELF;
-        pcm_gain = 1;
-      }
+      printf("\n<<warning>> PCM8A/PCM8PP is not running. Use MP3EXP for ADPCM encoding.\n");
+      encode_mode = ENCODE_MODE_SELF;
+      pcm_gain = 1;
     }
   }
 
@@ -372,35 +395,53 @@ loop:
   FILE* fp = NULL;
 
 try:
-  // encoder, decoder and chain tables
+  // encoder and decoders
   ADPCM_HANDLE adpcm_encoder = { 0 };
   MP3_DECODE_HANDLE mp3_decoder = { 0 };
-  NAS_ADPCM_DECODE_HANDLE nas_adpcm_decoder = { 0 };
-  static CHAIN_TABLE chain_tables[ MAX_CHAINS ];
+  WAV_DECODE_HANDLE wav_decoder = { 0 };
+  RAW_DECODE_HANDLE raw_decoder = { 0 };
+  YM2608_DECODE_HANDLE ym2608_decoder = { 0 };
 
-  // init adpcm encoder
-  if (adpcm_init(&adpcm_encoder, num_chains+1, decode_mode == DECODE_MODE_MP3 && pcm8_type == PCM8_TYPE_PCM8A ? use_high_memory : 0) != 0) {
+  // init adpcm (msm6258v) encoder
+  if (adpcm_init(&adpcm_encoder, num_chains+1) != 0) {
     printf("error: ADPCM encoder initialization error.\n");
     goto catch;
   }
 
-  // init mp3 decoder
-  if (use_mp3_cache || decode_mode == DECODE_MODE_MP3) {
-    if (mp3_init(&mp3_decoder) != 0) {
-      printf("error: MP3 decoder initialization error.\n");
-      goto catch;    
+  // init raw pcm decoder if needed
+  if (input_format == FORMAT_RAW) {
+    if (raw_decode_init(&raw_decoder, pcm_freq, pcm_channels, use_little_endian) != 0) {
+      printf("error: PCM decoder initialization error.\n");
+      goto catch;
     }
   }
 
-  // init nas adpcm decoder if needed
-  if (decode_mode == DECODE_MODE_NAS_ADPCM) {
-    if (nas_adpcm_init(&nas_adpcm_decoder, pcm_freq * pcm_channels * 4, pcm_freq, pcm_channels) != 0) {
+  // init adpcm (ym2608) decoder if needed
+  if (input_format == FORMAT_YM2608) {
+    if (ym2608_decode_init(&ym2608_decoder, pcm_freq * pcm_channels * 4, pcm_freq, pcm_channels) != 0) {
       printf("error: YM2608 adpcm decoder initialization error.\n");
       goto catch;
     }
   }
 
+  // init wav decoder if needed
+  if (input_format == FORMAT_WAV) {
+    if (wav_decode_init(&wav_decoder) != 0) {
+      printf("error: WAV decoder initialization error.\n");
+      goto catch;
+    }
+  }
+
+  // init mp3 decoder if needed
+  if (use_mp3_cache || input_format == FORMAT_MP3) {
+    if (mp3_decode_init(&mp3_decoder) != 0) {
+      printf("error: MP3 decoder initialization error.\n");
+      goto catch;    
+    }
+  }
+
   // init chain tables
+  static CHAIN_TABLE chain_tables[ MAX_CHAINS ];
   for (int16_t i = 0; i < num_chains; i++) {
     chain_tables[i].buffer = adpcm_encoder.buffers[i];
     chain_tables[i].buffer_bytes = 0;
@@ -416,15 +457,27 @@ try:
 
   // read the first 10 bytes of the MP3 file
   size_t skip_offset = 0;
-  if (use_mp3_cache || decode_mode == DECODE_MODE_MP3) {
+  if (use_mp3_cache || input_format == FORMAT_MP3) {
     printf("\rparsing ID3v2 tag and album art...");
-    int32_t ofs = mp3_parse_tags(&mp3_decoder, mp3_pic_brightness, mp3_pic_half_size, fp);
+    int32_t ofs = mp3_decode_parse_tags(&mp3_decoder, mp3_pic_brightness, mp3_pic_half_size, fp);
     if (ofs < 0) {
       printf("\rerror: ID3v2 tag parse error.\x1b[0K\n");
       goto catch;
     }
     skip_offset = ofs;
     printf("\r\x1b[0K");
+  }
+
+  // read header part of WAV file
+  if (input_format == FORMAT_WAV) {
+    int32_t ofs = wav_decode_parse_header(&wav_decoder, fp);
+    if (ofs < 0) {
+      printf("error: WAV header parse error.\n");
+      goto catch;
+    }
+    pcm_freq = wav_decoder.sample_rate;
+    pcm_channels = wav_decoder.channels;
+    skip_offset = ofs;
   }
 
   // in case mp3 cache mode, reopen the file
@@ -447,11 +500,11 @@ try:
   //   mp3 ... full read
   //   pcm ... incremental (max 2 sec)
   size_t fread_buffer_len = 
-    decode_mode == DECODE_MODE_MP3 ? 2 + pcm_file_size / sizeof(int16_t) : 
-    decode_mode == DECODE_MODE_NAS_ADPCM ? adpcm_encoder.buffer_bytes / 4 :
+    input_format == FORMAT_MP3 ? 2 + pcm_file_size / sizeof(int16_t) : 
+    input_format == FORMAT_YM2608 ? adpcm_encoder.buffer_bytes / 4 :
     pcm_freq * pcm_channels * 2;
   if (encode_mode != ENCODE_MODE_NONE) {
-    fread_buffer = himem_malloc(fread_buffer_len * sizeof(int16_t), decode_mode == DECODE_MODE_MP3 ? use_high_memory : 0);
+    fread_buffer = himem_malloc(fread_buffer_len * sizeof(int16_t), input_format == FORMAT_MP3 ? use_high_memory : 0);
     if (fread_buffer == NULL) {
       printf("\rerror: file read buffer memory allocation error.\n");
       goto catch;
@@ -461,7 +514,7 @@ try:
   // allocate resampling buffer
   size_t resample_buffer_len = adpcm_output_freq * 2 + 32;     // max 2 second samples + error allowance
   if (encode_mode != ENCODE_MODE_NONE) {
-    resample_buffer = himem_malloc(resample_buffer_len * sizeof(int16_t), use_high_memory);
+    resample_buffer = himem_malloc(resample_buffer_len * sizeof(int16_t), 0);
     if (resample_buffer == NULL) {
       printf("\rerror: resampling buffer memory allocation error.\n");
       goto catch;
@@ -469,7 +522,7 @@ try:
   }
 
   // init mp3 decoder if needed
-  if (decode_mode == DECODE_MODE_MP3) {
+  if (input_format == FORMAT_MP3) {
     // full read with staging buffer
     printf("\rloading MP3...\x1b[0K");
     fread_staging_buffer = himem_malloc(FREAD_STAGING_BUFFER_BYTES, 0);
@@ -502,19 +555,35 @@ try:
     printf("File name     : %s\n", pcm_file_name);
     printf("Data size     : %d [bytes]\n", pcm_file_size);
     printf("Data format   : %s\n", 
-      decode_mode == DECODE_MODE_MP3 ? "MP3" : 
-      decode_mode == DECODE_MODE_NAS_ADPCM ? "YM2608 ADPCM" :
-      encode_mode != ENCODE_MODE_NONE ? "16bit signed PCM (big)" : 
+      input_format == FORMAT_MP3 ? "MP3" : 
+      input_format == FORMAT_WAV ? "WAV" :
+      input_format == FORMAT_YM2608 ? "YM2608 ADPCM" :
+      input_format == FORMAT_RAW && !use_little_endian ? "16bit signed raw PCM (big)" : 
+      input_format == FORMAT_RAW &&  use_little_endian ? "16bit signed raw PCM (little)" :
       "ADPCM(MSM6258V)");
 
-    if (decode_mode == DECODE_MODE_NONE) {
-      float pcm_1sec_size = pcm_freq * pcm_channels * (encode_mode == ENCODE_MODE_NONE ? 0.5 : 2);
+    if (input_format == FORMAT_ADPCM) {
+      float pcm_1sec_size = 0.5;
       printf("PCM frequency : %d [Hz]\n", pcm_freq);
-      printf("PCM channels  : %s\n", pcm_channels == 1 ? "mono" : "stereo");
+      printf("PCM channels  : %s\n", "mono");
       printf("PCM length    : %4.2f [sec]\n", (float)pcm_file_size / pcm_1sec_size);
     }
 
-    if (!use_mp3_cache && decode_mode == DECODE_MODE_NAS_ADPCM) {
+    if (!use_mp3_cache && input_format == FORMAT_RAW) {
+      float pcm_1sec_size = 2;
+      printf("PCM frequency : %d [Hz]\n", pcm_freq);
+      printf("PCM channels  : %s\n", pcm_channels == 1 ? "mono" : "stereo");
+      printf("PCM length    : %4.2f [sec]\n", (float)pcm_file_size / pcm_channels / pcm_1sec_size);
+    }
+
+    if (!use_mp3_cache && input_format == FORMAT_YM2608) {
+      float pcm_1sec_size = 0.5;
+      printf("PCM frequency : %d [Hz]\n", pcm_freq);
+      printf("PCM channels  : %s\n", pcm_channels == 1 ? "mono" : "stereo");
+      printf("PCM length    : %4.2f [sec]\n", (float)pcm_file_size / pcm_channels / pcm_1sec_size);
+    }
+
+    if (!use_mp3_cache && input_format == FORMAT_WAV) {
       printf("PCM frequency : %d [Hz]\n", pcm_freq);
       printf("PCM channels  : %s\n", pcm_channels == 1 ? "mono" : "stereo");
     }
@@ -527,18 +596,17 @@ try:
       "MP3EXP");
   
     // describe ADPCM encoding
-    if (encode_mode == ENCODE_MODE_NONE || pcm8_type == PCM8_TYPE_PCM8PP) {
-      //printf("ADPCM encode  : (none)\n");
-    } else {
+    if (encode_mode == ENCODE_MODE_SELF || encode_mode == ENCODE_MODE_PCM8A) {
       printf("ADPCM encode  : %s / %d [Hz]\n",
         encode_mode == ENCODE_MODE_SELF   ? "MP3EXP" :
         encode_mode == ENCODE_MODE_PCM8A  ? "PCM8A"  :
         "(unknown)", adpcm_output_freq);
     }
 
-    // describe MP3 decoding rate
-    if (use_mp3_cache || decode_mode == DECODE_MODE_MP3) {
+    // describe MP3 information
+    if (use_mp3_cache || input_format == FORMAT_MP3) {
       printf("MP3 quality   : %s\n",
+        use_mp3_cache ? "cache" :
         mp3_quality == 2 ? "low" :
         mp3_quality == 1 ? "normal" : "high");
       if (mp3_decoder.mp3_title != NULL) {
@@ -588,7 +656,7 @@ try:
   
     } else if (encode_mode == ENCODE_MODE_PCM8PP) {
 
-      if (decode_mode == DECODE_MODE_MP3) {
+      if (input_format == FORMAT_MP3) {
 
         // MP3 decode and PCM through (no encoding) with PCM8PP
         size_t decoded_bytes;
@@ -602,7 +670,7 @@ try:
           end_flag = 1;
         }
 
-      } else if (decode_mode == DECODE_MODE_NAS_ADPCM) {
+      } else if (input_format == FORMAT_YM2608) {
 
         // NAS ADPCM decode and PCM through (no resample, no encoding) with PCM8PP
         size_t fread_len = fread(fread_buffer, 1, fread_buffer_len, fp);
@@ -611,11 +679,11 @@ try:
           end_flag = 1;
         }
         size_t decoded_bytes =
-          nas_adpcm_decode_buffer(&nas_adpcm_decoder, fread_buffer, fread_len, 
+          ym2608_decode_exec_buffer(&ym2608_decoder, fread_buffer, fread_len, 
             chain_tables[i].buffer, adpcm_encoder.buffer_bytes / sizeof(int16_t)) * sizeof(int16_t);
         chain_tables[i].buffer_bytes = decoded_bytes;
 
-      } else if (decode_mode == DECODE_MODE_RESAMPLE) {
+      } else if (input_format == FORMAT_RAW) {
 
         // PCM to ADPCM encode with PCM8PP
         size_t fread_len = fread(fread_buffer, 2, fread_buffer_len, fp);  
@@ -641,7 +709,7 @@ try:
 
     } else if (encode_mode == ENCODE_MODE_PCM8A) {
 
-      if (decode_mode == DECODE_MODE_MP3) {
+      if (input_format == FORMAT_MP3) {
 
         // MP3 decode and ADPCM encode with PCM8A
         size_t resampled_len;
@@ -655,7 +723,7 @@ try:
           end_flag = 1;
         }
 
-      } else if (decode_mode == DECODE_MODE_NAS_ADPCM) {
+      } else if (input_format == FORMAT_YM2608) {
 
         // NAS ADPCM decode and ADPCM encode with PCM8A
         size_t fread_len = fread(fread_buffer, 1, fread_buffer_len * sizeof(int16_t), fp);  
@@ -663,11 +731,11 @@ try:
           chain_tables[i].next = NULL;
           end_flag = 1;
         }
-        nas_adpcm_decode(&nas_adpcm_decoder, fread_buffer, fread_len);
-        size_t resampled_bytes = nas_adpcm_resample(&nas_adpcm_decoder, chain_tables[i].buffer, pcm_gain) * sizeof(int16_t);
+        ym2608_decode_exec(&ym2608_decoder, fread_buffer, fread_len);
+        size_t resampled_bytes = ym2608_decode_resample(&ym2608_decoder, chain_tables[i].buffer, 15625, pcm_gain) * sizeof(int16_t);
         chain_tables[i].buffer_bytes = resampled_bytes;
 
-      } else if (decode_mode == DECODE_MODE_RESAMPLE) {
+      } else if (input_format == FORMAT_RAW) {
 
         // PCM to ADPCM encode with PCM8A
         size_t fread_len = fread(fread_buffer, 2, fread_buffer_len, fp);  
@@ -716,7 +784,7 @@ try:
   // start playing
   if (pcm8_type == PCM8_TYPE_PCM8PP) {
 
-    if (decode_mode == DECODE_MODE_MP3) {
+    if (input_format == FORMAT_MP3) {
       pcm_freq = mp3_decoder.mp3_sample_rate;
       pcm_channels = mp3_decoder.mp3_channels;
 #ifdef DEBUG
@@ -908,7 +976,7 @@ try:
 
       } else if (encode_mode == ENCODE_MODE_PCM8PP) {
 
-        if (decode_mode == DECODE_MODE_MP3) {
+        if (input_format == FORMAT_MP3) {
 
           // MP3 decode and PCM through (no encoding) with PCM8PP
           size_t decoded_bytes;
@@ -922,7 +990,7 @@ try:
             end_flag = 1;
           }
 
-        } else if (decode_mode == DECODE_MODE_NAS_ADPCM) {
+        } else if (input_format == FORMAT_YM2608) {
 
           // NAS ADPCM decode and PCM through (no resample, no encoding) with PCM8PP
           size_t fread_len = fread(fread_buffer, 1, fread_buffer_len, fp);
@@ -931,11 +999,11 @@ try:
             end_flag = 1;
           }
           size_t decoded_bytes = 
-            nas_adpcm_decode_buffer(&nas_adpcm_decoder, fread_buffer, fread_len, 
+            ym2608_decode_exec_buffer(&ym2608_decoder, fread_buffer, fread_len, 
               cta->buffer, adpcm_encoder.buffer_bytes / sizeof(int16_t)) * sizeof(int16_t);
           cta->buffer_bytes = decoded_bytes;
 
-        } else if (decode_mode == DECODE_MODE_RESAMPLE) {
+        } else if (input_format == FORMAT_RAW) {
 
           // ADPCM encoding with PCM8PP
           size_t fread_len = fread(fread_buffer, 2, fread_buffer_len, fp);  
@@ -961,7 +1029,7 @@ try:
 
       } else if (encode_mode == ENCODE_MODE_PCM8A) {
 
-        if (decode_mode == DECODE_MODE_MP3) {
+        if (input_format == FORMAT_MP3) {
 
           // MP3 decode and ADPCM encode
           size_t resampled_len;
@@ -975,16 +1043,16 @@ try:
             end_flag = 1;
           }
 
-        } else if (decode_mode == DECODE_MODE_NAS_ADPCM) {
+        } else if (input_format == FORMAT_YM2608) {
 
-          // NAS ADPCM decode and ADPCM encode with PCM8A
+          // YM2608 decode and ADPCM encode with PCM8A
           size_t fread_len = fread(fread_buffer, 1, fread_buffer_len, fp);  
           if (fread_len < fread_buffer_len) {
             cta->next = NULL;
             end_flag = 1;
           }
-          nas_adpcm_decode(&nas_adpcm_decoder, fread_buffer, fread_len);
-          size_t resampled_bytes = nas_adpcm_resample(&nas_adpcm_decoder, cta->buffer, pcm_gain) * sizeof(int16_t);
+          ym2608_decode_exec(&ym2608_decoder, fread_buffer, fread_len);
+          size_t resampled_bytes = ym2608_decode_resample(&ym2608_decoder, cta->buffer, 15625, pcm_gain) * sizeof(int16_t);
           cta->buffer_bytes = resampled_bytes;
 
         } else {
@@ -1052,7 +1120,7 @@ catch:
 
   // reclaim memory buffers
   if (resample_buffer != NULL) {
-    himem_free(resample_buffer, use_high_memory);
+    himem_free(resample_buffer, 0);
     resample_buffer = NULL;
   }
   if (fread_staging_buffer != NULL) {
@@ -1060,21 +1128,31 @@ catch:
     fread_staging_buffer = NULL;
   }
   if (fread_buffer != NULL) {
-    himem_free(fread_buffer, decode_mode == DECODE_MODE_MP3 ? use_high_memory : 0);
+    himem_free(fread_buffer, input_format == FORMAT_MP3 ? use_high_memory : 0);
     fread_buffer = NULL;
   }
 
   // close adpcm encoder
   adpcm_close(&adpcm_encoder);
 
-  // close mp3 decoder
-  if (decode_mode == DECODE_MODE_MP3) {
-    mp3_close(&mp3_decoder);
+  // close raw decoder
+  if (input_format == FORMAT_RAW) {
+    raw_decode_close(&raw_decoder);
   }
 
-  // close nas adpcm decoder
-  if (decode_mode == DECODE_MODE_NAS_ADPCM) {
-    nas_adpcm_close(&nas_adpcm_decoder);
+  // close ym2608 decoder
+  if (input_format == FORMAT_YM2608) {
+    ym2608_decode_close(&ym2608_decoder);
+  }
+
+  // close wav decoder
+  if (input_format == FORMAT_WAV) {
+    wav_decode_close(&wav_decoder);
+  }
+
+  // close mp3 decoder
+  if (input_format == FORMAT_MP3) {
+    mp3_decode_close(&mp3_decoder);
   }
 
   // enable pcm8 polyphonic mode

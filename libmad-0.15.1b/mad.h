@@ -25,8 +25,10 @@ extern "C" {
 # endif
 
 /*# define FPM_INTEL*/
+# ifndef FPM_DEFAULT
 # define FPM_DEFAULT
-# define OPT_SPEED
+# endif
+/*# define OPT_SPEED*/
 
 
 # define SIZEOF_INT 4

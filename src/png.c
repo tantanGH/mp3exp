@@ -3,9 +3,9 @@
 #include <doslib.h>
 #include <zlib.h>
 
-#include "png.h"
 #include "himem.h"
-#include "buffer.h"
+#include "png_buffer.h"
+#include "png.h"
 
 // GVRAM memory address
 #define GVRAM       ((uint16_t*)0xC00000)
