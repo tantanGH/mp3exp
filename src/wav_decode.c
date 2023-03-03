@@ -163,7 +163,7 @@ int32_t wav_decode_parse_header(WAV_DECODE_HANDLE* wav, FILE* fp) {
   bytes_read += fread(buf, sizeof(uint8_t), 4, fp);
   wav->duration = (buf[0] + (buf[1]<<8) + (buf[2]<<16) + (buf[3]<<24)) / wav->block_align;
 
-  rc = 0;
+  rc = bytes_read;
 
 exit:
   return rc;
@@ -193,8 +193,8 @@ size_t wav_decode_resample(WAV_DECODE_HANDLE* wav, int16_t* resample_buffer, int
     
       // little endian
       uint8_t* source_buffer_uint8 = (uint8_t*)(&(source_buffer[ source_buffer_ofs ]));
-      int16_t lch = (int16_t)(source_buffer_uint8[1] * 256 + source_buffer_uint8[0]);
-      int16_t rch = (int16_t)(source_buffer_uint8[3] * 256 + source_buffer_uint8[2]);
+      int16_t lch = (int16_t)(source_buffer_uint8[0] + source_buffer_uint8[1] * 256);
+      int16_t rch = (int16_t)(source_buffer_uint8[2] + source_buffer_uint8[3] * 256);
       int16_t x = ((int32_t)(lch + rch)) / 2 / gain;
       resample_buffer[ resample_buffer_ofs++ ] = x;
       source_buffer_ofs += 2;

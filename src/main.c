@@ -468,18 +468,6 @@ try:
     printf("\r\x1b[0K");
   }
 
-  // read header part of WAV file
-  if (input_format == FORMAT_WAV) {
-    int32_t ofs = wav_decode_parse_header(&wav_decoder, fp);
-    if (ofs < 0) {
-      printf("error: WAV header parse error.\n");
-      goto catch;
-    }
-    pcm_freq = wav_decoder.sample_rate;
-    pcm_channels = wav_decoder.channels;
-    skip_offset = ofs;
-  }
-
   // in case mp3 cache mode, reopen the file
   if (use_mp3_cache) {
     fclose(fp);
@@ -489,6 +477,18 @@ try:
       goto catch;
     }
     skip_offset = 0;
+  }
+
+  // read header part of WAV file
+  if (input_format == FORMAT_WAV) {
+    int32_t ofs = wav_decode_parse_header(&wav_decoder, fp);
+    if (ofs < 0) {
+      //printf("error: wav header parse error.\n");
+      goto catch;
+    }
+    pcm_freq = wav_decoder.sample_rate;
+    pcm_channels = wav_decoder.channels;
+    skip_offset = ofs;
   }
 
   // check file size
