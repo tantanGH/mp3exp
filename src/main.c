@@ -448,20 +448,20 @@ try:
     chain_tables[i].next = &(chain_tables[ ( i + 1 ) % num_chains ]);
   }
 
-  // open pcm/mp3 file
+  // open input file
   fp = fopen(pcm_file_name, "rb");
   if (fp == NULL) {
-    printf("error: cannot open pcm/mp3 file (%s).\n", pcm_file_name);
+    printf("error: cannot open input file (%s).\n", pcm_file_name);
     goto catch;
   }
 
   // read the first 10 bytes of the MP3 file
   size_t skip_offset = 0;
   if (use_mp3_cache || input_format == FORMAT_MP3) {
-    printf("\rparsing ID3v2 tag and album art...");
+    printf("\rparsing MP3 ID3v2 tag and album art...");
     int32_t ofs = mp3_decode_parse_tags(&mp3_decoder, mp3_pic_brightness, mp3_pic_half_size, fp);
     if (ofs < 0) {
-      printf("\rerror: ID3v2 tag parse error.\x1b[0K\n");
+      printf("\rerror: MP3 ID3v2 tag parse error.\x1b[0K\n");
       goto catch;
     }
     skip_offset = ofs;
@@ -485,7 +485,7 @@ try:
     fclose(fp);
     fp = fopen(pcm_cache_file_name, "rb");
     if (fp == NULL) {
-      printf("error: cannot open pcm/mp3 file (%s).\n", pcm_file_name);
+      printf("error: cannot open input file (%s).\n", pcm_file_name);
       goto catch;
     }
     skip_offset = 0;
@@ -586,6 +586,7 @@ try:
     if (!use_mp3_cache && input_format == FORMAT_WAV) {
       printf("PCM frequency : %d [Hz]\n", pcm_freq);
       printf("PCM channels  : %s\n", pcm_channels == 1 ? "mono" : "stereo");
+      printf("PCM length    : %4.2f [sec]\n", (float)wav_decoder.duration / pcm_freq);
     }
 
     // describe PCM drivers

@@ -11,19 +11,15 @@ int32_t wav_decode_init(WAV_DECODE_HANDLE* wav) {
 
   int32_t rc = -1;
 
-  // baseline
-//  nas->decode_buffer = NULL;
-//  nas->decode_buffer_len = decode_buffer_len;
-//  nas->decode_buffer_ofs = 0;
-//  pcm->sample_rate = sample_rate;
-//  pcm->channels = channels;
-//  pcm->little_endian = little_endian;
+  wav->sample_rate = -1;
+  wav->channels = -1;
+  wav->byte_rate = -1;
+  wav->block_align = -1;
+  wav->bits_per_sample = -1;
+  wav->duration = -1;
+
   wav->resample_counter = 0;
  
-  // buffer allocation
-//  nas->decode_buffer = himem_malloc(nas->decode_buffer_len * sizeof(int16_t), 0);
-//  if (nas->decode_buffer == NULL) goto exit;
-
   rc = 0;
 
 exit:
@@ -34,10 +30,7 @@ exit:
 //  close decoder handle
 //
 void wav_decode_close(WAV_DECODE_HANDLE* wav) {
-//  if (nas->decode_buffer != NULL) {
-//    himem_free(nas->decode_buffer, 0);
-//    nas->decode_buffer = NULL;
-//  }
+
 }
 
 //
@@ -45,7 +38,135 @@ void wav_decode_close(WAV_DECODE_HANDLE* wav) {
 //
 int32_t wav_decode_parse_header(WAV_DECODE_HANDLE* wav, FILE* fp) {
 
-  return 0;
+  int32_t rc = -1;
+  size_t bytes_read = 0;
+
+  // ChunkID
+  uint8_t buf[5];
+  bytes_read += fread(buf, sizeof(uint8_t), 4, fp);
+  buf[4] = '\0';
+  if (strcmp(buf, "RIFF") != 0) {
+    printf("error: incorrect wav format.\n");
+    goto exit;
+  }
+
+  // ChunkSize
+  bytes_read += fread(buf, sizeof(uint8_t), 4, fp);
+
+  // Format
+  bytes_read += fread(buf, sizeof(uint8_t), 4, fp);
+  buf[4] = '\0';
+  if (strcmp(buf, "WAVE") != 0) {
+    printf("error: incorrect wav format.\n");
+    goto exit;
+  }
+
+  // Subchunk1ID
+  bytes_read += fread(buf, sizeof(uint8_t), 4, fp);
+  buf[4] = '\0';
+
+  // check if we have a JUNK Chunk
+  if (strcmp(buf, "JUNK") == 0) {
+    size_t bytes_junk = fread(buf, sizeof(uint8_t), 4, fp);
+    buf[4] = '\0';
+    bytes_junk += buf[0] + (buf[1] << 8) + (buf[2] << 16) + (buf[3] << 24);
+    if (fseek(fp, bytes_read + bytes_junk, SEEK_SET) != 0) {
+      printf("error: wav seek error.\n");
+      goto exit;
+    }
+    bytes_read += bytes_junk;
+//    bytes_expected += bytes_junk + 4;
+    // now really read the fmt chunk
+    bytes_read += fread(buf, sizeof(uint8_t), 4, fp);
+    buf[4] = '\0';
+  }
+
+  // get the fmt chunk
+  if (strcmp(buf, "fmt ") != 0) {
+    printf("error: wav fmt chunk read error.\n");
+    goto exit;
+  }
+
+  // Subchunk1Size
+  bytes_read += fread(buf, sizeof(uint8_t), 4, fp);
+  int16_t format = buf[0];
+  if (format != 16) {
+    printf("error: wav unknown format (%d).\n", format);
+    goto exit;
+  }
+  if (buf[1] != 0 || buf[2] != 0 || buf[3] != 0) {
+    printf("error: wav Subchunk1Size error.\n");
+    goto exit;
+  }
+
+  // AudioFormat
+  bytes_read += fread(buf, sizeof(uint8_t), 2, fp);
+  if (buf[0] != 1 || buf[1] != 0) {
+    printf("error: wav AudioFormat error.\n");
+    goto exit;
+  }
+
+  // NumChannels
+  bytes_read += fread(buf, sizeof(uint8_t), 2, fp);
+  wav->channels = buf[0] + (buf[1] << 8);
+  if (wav->channels != 1 && wav->channels != 2) {
+    printf("error: wav unsupported channels (%d).\n", wav->channels);
+    goto exit;
+  }
+
+  // SampleRate
+  bytes_read += fread(buf, sizeof(uint8_t), 4, fp);
+  wav->sample_rate = buf[0] + (buf[1] << 8) + (buf[2] << 16) + (buf[3] << 24);
+  if (wav->sample_rate != 32000 && wav->sample_rate != 44100 && wav->sample_rate != 48000) {
+    printf("error: wav unsupported sample rate (%d).\n", wav->sample_rate);
+    goto exit;
+  }
+
+  // ByteRate
+  bytes_read += fread(buf, sizeof(uint8_t), 4, fp);
+  wav->byte_rate = buf[0] + (buf[1] <<8) + (buf[2] << 16) + (buf[3] << 24);
+
+  // BlockAlign
+  bytes_read += fread(buf, sizeof(uint8_t), 2, fp);
+  wav->block_align = buf[0] + (buf[1] << 8);
+
+  // BitsPerSample
+  bytes_read += fread(buf, sizeof(uint8_t), 2, fp);
+  wav->bits_per_sample = buf[0] + (buf[1] << 8);
+  if (wav->bits_per_sample != 16) {
+    printf("error: wav unsupported bit per sample (%d).\n", wav->bits_per_sample);
+    goto exit;
+  }
+
+  // Subchunk2ID
+  bytes_read += fread(buf, sizeof(uint8_t), 4, fp);
+  buf[4] = '\0';
+  while (strcmp(buf, "data") != 0) {
+    if (feof(fp) || ferror(fp)) {
+      printf("error: wav Shubchunk2 read error.\n");
+      goto exit;
+    }
+    size_t bytes_junk = fread(buf, sizeof(uint8_t), 4, fp);
+    buf[4] = '\0';
+    bytes_junk += buf[0] + (buf[1] << 8) + (buf[2] << 16) + (buf[3] << 24);
+    if (fseek(fp, bytes_read + bytes_junk, SEEK_SET) != 0) {
+      printf("error: wav seek error.\n");
+      goto exit;
+    }
+    bytes_read += bytes_junk;
+    //bytes_expected += bytes_junk+ 4;
+    bytes_read += fread(buf, sizeof(uint8_t), 4, fp);
+    buf[4] = '\0';
+  }
+
+  // Subchunk2Size
+  bytes_read += fread(buf, sizeof(uint8_t), 4, fp);
+  wav->duration = (buf[0] + (buf[1]<<8) + (buf[2]<<16) + (buf[3]<<24)) / wav->block_align;
+
+  rc = 0;
+
+exit:
+  return rc;
 }
 
 //

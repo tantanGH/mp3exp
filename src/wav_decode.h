@@ -9,7 +9,11 @@ typedef struct {
 
   int32_t sample_rate;
   int16_t channels;
-
+  int32_t byte_rate;
+  int16_t block_align;
+  int16_t bits_per_sample;
+  int32_t duration;
+  
   size_t resample_counter;
 
 //  size_t decode_buffer_len;
