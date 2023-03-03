@@ -41,6 +41,14 @@ void wav_decode_close(WAV_DECODE_HANDLE* wav) {
 }
 
 //
+//  parse wav header
+//
+int32_t wav_decode_parse_header(WAV_DECODE_HANDLE* wav, FILE* fp) {
+
+  return 0;
+}
+
+//
 //  resampling
 //
 size_t wav_decode_resample(WAV_DECODE_HANDLE* wav, int16_t* resample_buffer, int32_t resample_freq, int16_t* source_buffer, size_t source_buffer_len, int16_t gain) {
