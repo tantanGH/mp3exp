@@ -32,7 +32,7 @@ LIBS="${XDEV68K_DIR}/lib/xc/CLIB.L ${XDEV68K_DIR}/lib/xc/DOSLIB.L ${XDEV68K_DIR}
 function do_compile() {
   pushd .
   cd $1
-#  rm -rf _build
+  rm -rf _build
   mkdir -p _build
   for c in $2; do
     echo "compiling ${c}.c in ${1}"
@@ -59,8 +59,8 @@ function do_compile() {
 }
 
 function build_mp3exp() {
-#  do_compile . "crtc himem nanojpeg png_buffer png pcm8 pcm8a pcm8pp adpcm_encode raw_decode ym2608_decode wav_decode mp3_decode kmd main" "utf16_cp932 ym2608_adpcmlib"
-  do_compile . "adpcm_encode raw_decode wav_decode mp3_decode ym2608_decode kmd main" ""
+  do_compile . "crtc himem nanojpeg png_buffer png pcm8 pcm8a pcm8pp adpcm_encode raw_decode ym2608_decode wav_decode mp3_decode kmd main" "utf16_cp932 ym2608_adpcmlib"
+#  do_compile . "adpcm_encode raw_decode wav_decode mp3_decode ym2608_decode kmd main" ""
   if [ $? != 0 ]; then
     return $?
   fi

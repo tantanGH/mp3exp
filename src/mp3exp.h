@@ -1,7 +1,7 @@
 #ifndef __H_MP3EXP__
 #define __H_MP3EXP__
 
-#define VERSION "0.8.5 (2023/03/04)"
+#define VERSION "0.8.4beta (2023/03/03)"
 
 #define REG_DMAC_CH2_CSR (0xE84080 + 0x00)
 #define REG_DMAC_CH3_BAR (0xE840C0 + 0x1C)
@@ -9,6 +9,7 @@
 #define MAX_PATH_LEN (256)
 
 #define MAX_CHAINS (128)
+#define CHAIN_TABLE_BUFFER_BYTES (0xff00)
 
 #define FREAD_STAGING_BUFFER_BYTES (65536*4)
 

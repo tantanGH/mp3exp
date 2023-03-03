@@ -92,7 +92,7 @@ static uint8_t encode(int16_t current_data, int16_t last_estimate, int16_t* step
 //
 //  initialize adpcm encoder handle
 //
-int32_t adpcm_encode_init(ADPCM_ENCODE_HANDLE* adpcm, int16_t buffer_count) {
+int32_t adpcm_encode_init(ADPCM_ENCODE_HANDLE* adpcm) {
 
   int32_t rc = -1;
 
@@ -101,18 +101,18 @@ int32_t adpcm_encode_init(ADPCM_ENCODE_HANDLE* adpcm, int16_t buffer_count) {
   adpcm->num_samples = 0;
   adpcm->resample_counter = 0;
 
-  adpcm->use_high_memory = 0;     // use main memory only
-  adpcm->current_buffer_id = 0;
-  adpcm->buffer_count = buffer_count;
-  adpcm->buffer_bytes = ADPCM_BUFFER_SIZE;
-  adpcm->buffer_ofs = 0;
+//  adpcm->use_high_memory = 0;     // use main memory only
+//  adpcm->current_buffer_id = 0;
+//  adpcm->buffer_count = buffer_count;
+//  adpcm->buffer_bytes = ADPCM_BUFFER_SIZE;
+//  adpcm->buffer_ofs = 0;
 
-  for (int16_t i = 0; i < adpcm->buffer_count; i++) {
-    adpcm->buffers[i] = himem_malloc(adpcm->buffer_bytes, adpcm->use_high_memory);
-    if (adpcm->buffers[i] == NULL) {
-      goto exit;
-    }
-  }
+//  for (int16_t i = 0; i < adpcm->buffer_count; i++) {
+//    adpcm->buffers[i] = himem_malloc(adpcm->buffer_bytes, adpcm->use_high_memory);
+//    if (adpcm->buffers[i] == NULL) {
+//      goto exit;
+//    }
+//  }
 
   rc = 0;
 
@@ -126,55 +126,57 @@ exit:
 void adpcm_encode_close(ADPCM_ENCODE_HANDLE* adpcm) {
 
   // reclaim buffers
-  for (int16_t i = 0; i < adpcm->buffer_count; i++) {
-    if (adpcm->buffers[i] != NULL) {
-      himem_free(adpcm->buffers[i], adpcm->use_high_memory);
-      adpcm->buffers[i] = NULL;
-    }
-  }
+//  for (int16_t i = 0; i < adpcm->buffer_count; i++) {
+//    if (adpcm->buffers[i] != NULL) {
+//      himem_free(adpcm->buffers[i], adpcm->use_high_memory);
+//      adpcm->buffers[i] = NULL;
+//    }
+//  }
 }
 
 //
-//  execute adpcm encoding
+//  select next buffer
 //
-int32_t adpcm_encode_exec(ADPCM_ENCODE_HANDLE* adpcm, void* pcm_buffer, size_t pcm_buffer_len, int16_t pcm_bit_depth, int16_t pcm_channels) {
+//void adpcm_encode_next_buffer(ADPCM_ENCODE_HANDLE* adpcm) {
+//  int16_t id = adpcm->current_buffer_id;
+//  adpcm->current_buffer_id = (id + 1) % adpcm->buffer_count;
+//  adpcm->buffer_ofs = 0;
+//}
 
-  // default return code
-  int32_t rc = -1;
+//
+//  execute adpcm encoding with resample
+//
+int32_t adpcm_encode_resample(ADPCM_ENCODE_HANDLE* adpcm, uint8_t* adpcm_buffer, int32_t adpcm_freq, int16_t* pcm_buffer, size_t pcm_buffer_len, int32_t pcm_freq, int16_t pcm_channels, int16_t little_endian) {
 
-  // number of source PCM data samples and offset
-  size_t pcm_samples = pcm_buffer_len * 8 / pcm_bit_depth;
-  size_t pcm_ofs = 0;
+  // source and target buffer offset
+  size_t pcm_buffer_ofs = 0;
+  size_t adpcm_buffer_ofs = 0;
+  size_t adpcm_num_samples = 0;
 
-  while (pcm_ofs < pcm_samples) {
+  while (pcm_buffer_ofs < pcm_buffer_len) {
+
+    // down sampling
+    adpcm->resample_counter += adpcm_freq;
+    if (adpcm->resample_counter < pcm_freq) {
+      pcm_buffer_ofs += pcm_channels;
+      continue;
+    }
+    adpcm->resample_counter -= pcm_freq;
 
     // get 12bit PCM mono data
     int16_t xx = 0;
-    if (pcm_bit_depth == 16) {
-      int16_t* pcm = (int16_t*)pcm_buffer;
-      if (pcm_channels == 2) {
-        // 16bit PCM LR to 12bit PCM mono
-        xx = (pcm[ pcm_ofs ] + pcm[ pcm_ofs + 1 ]) / 2 / 16;
-        pcm_ofs += 2;
-      } else {
-        // 16bit PCM mono to 12bit PCM mono
-        xx = pcm[ pcm_ofs ] / 16;
-        pcm_ofs += 1;
-      }
-    } else if (pcm_bit_depth == 8) {
-      int8_t* pcm = (int8_t*)pcm_buffer;
-      if (pcm_channels == 2) {
-        // 8bit PCM LR to 12bit PCM mono
-        xx = (pcm[ pcm_ofs ] + pcm[ pcm_ofs + 1 ]) * 16 / 2;
-        pcm_ofs += 2;
-      } else {
-        // 8bit PCM mono to 12bit PCM mono
-        xx = pcm[ pcm_ofs ] * 16;
-        pcm_ofs += 1;
-      }
+    uint8_t* p = (uint8_t*)(&pcm_buffer[ pcm_buffer_ofs ]);
+    if (pcm_channels == 2) {
+      // 16bit PCM LR to 12bit PCM mono
+      int16_t lch = little_endian ? p[0] + p[1] * 256 : pcm_buffer[ pcm_buffer_ofs ];
+      int16_t rch = little_endian ? p[2] + p[3] * 256 : pcm_buffer[ pcm_buffer_ofs + 1];
+      xx = (lch + rch) / 2 / 16;
+      pcm_buffer_ofs += 2;
     } else {
-      printf("error: unsupported pcm bit depth.\n");
-      goto exit;
+      // 16bit PCM mono to 12bit PCM mono
+      int16_t mch = little_endian ? p[0] + p[1] * 256 : pcm_buffer[ pcm_buffer_ofs ];
+      xx = mch / 16;
+      pcm_buffer_ofs += 1;
     }
 
     // encode to 4bit ADPCM data
@@ -182,35 +184,30 @@ int32_t adpcm_encode_exec(ADPCM_ENCODE_HANDLE* adpcm, void* pcm_buffer, size_t p
     uint8_t code = encode(xx, adpcm->last_estimate, &adpcm->step_index, &new_estimate);
     adpcm->last_estimate = new_estimate;
 
-    // current buffer is full?
-    if (adpcm->buffer_ofs >= adpcm->buffer_bytes) {
-      int16_t orig = adpcm->current_buffer_id;
-      adpcm->current_buffer_id = (orig + 1) % adpcm->buffer_count;
-      adpcm->buffer_ofs = 0;
-    }
-
     // fill a byte in this order: lower 4 bit -> upper 4 bit
-    uint8_t* buffer = adpcm->buffers[ adpcm->current_buffer_id ];
-    if ((adpcm->num_samples % 2) == 0) {
-      buffer[ adpcm->buffer_ofs ] = code;
+    if ((adpcm_num_samples % 2) == 0) {
+      adpcm_buffer[ adpcm_buffer_ofs ] = code;
     } else {
-      buffer[ adpcm->buffer_ofs ] |= code << 4;
-      adpcm->buffer_ofs++;
+      adpcm_buffer[ adpcm_buffer_ofs ] |= code << 4;
+      adpcm_buffer_ofs++;
     }
-    adpcm->num_samples++;
+    adpcm_num_samples++;
 
   }
 
-  rc = 0;
+  if ((adpcm_num_samples % 2) != 0) {
+    printf("error: ADPCM encoding error - incomplete ADPCM output byte.\n");
+    return 0;
+  }
 
-exit:
-  return rc;
+  return adpcm_buffer_ofs;
 }
 
+/*
 //
 //  resampling
 //
-size_t adpcm_rencode_esample(ADPCM_ENCODE_HANDLE* adpcm, int16_t* convert_buffer, int16_t* source_buffer, size_t source_buffer_len, int32_t source_pcm_freq, int16_t source_pcm_channels, int16_t gain) {
+size_t adpcm_encode_resample(ADPCM_ENCODE_HANDLE* adpcm, int16_t* convert_buffer, int16_t* source_buffer, size_t source_buffer_len, int32_t source_pcm_freq, int16_t source_pcm_channels, int16_t gain) {
 
   size_t convert_buffer_ofs = 0;
   size_t source_buffer_ofs = 0;
@@ -255,3 +252,4 @@ size_t adpcm_rencode_esample(ADPCM_ENCODE_HANDLE* adpcm, int16_t* convert_buffer
 
   return convert_buffer_ofs;
 }
+*/
