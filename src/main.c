@@ -878,7 +878,9 @@ try:
 
   }
 
-  B_PRINT("\rnow playing ... push [ESC]/[Q] key to stop.\x1b[0K");
+  B_PRINT("\rnow playing ... push [ESC]/[Q] key to quit. [SPACE] to pause.\x1b[0K");
+  int16_t paused = 0;
+  uint32_t pause_time;
 
   // for kmd
   uint32_t play_start_time = ONTIME() * 10;
@@ -897,7 +899,7 @@ try:
 
   for (;;) {
    
-    // check esc key to exit
+    // check esc key to exit, space key to pause
     if (B_KEYSNS() != 0) {
       int16_t scan_code = B_KEYINP() >> 8;
       if (scan_code == KEY_SCAN_CODE_ESC || scan_code == KEY_SCAN_CODE_Q) {
@@ -905,8 +907,32 @@ try:
         B_PRINT("\rstopped.\x1b[0K");
         rc = 1;
         break;
+      } else if (scan_code == KEY_SCAN_CODE_SPACE) {
+        if (paused) {
+          if (playback_driver == DRIVER_PCM8PP) {
+            pcm8pp_resume();
+          } else if (playback_driver == DRIVER_PCM8A) {
+            pcm8a_resume();
+          } else {
+            ADPCMMOD(2);
+          }
+          paused = 0;
+          play_start_time += ONTIME() - pause_time;   // adjust for KMD
+        } else {
+          if (playback_driver == DRIVER_PCM8PP) {
+            pcm8pp_pause();
+          } else if (playback_driver == DRIVER_PCM8A) {
+            pcm8a_pause();
+          } else {
+            ADPCMMOD(1);
+          }
+          paused = 1;
+          pause_time = ONTIME();
+        }
       }
     }
+
+    if (paused) continue;
 
     // exit if not playing
     if (playback_driver == DRIVER_PCM8PP) {
