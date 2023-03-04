@@ -363,10 +363,9 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
   int16_t first_play = 1;
 
 loop:
-  // file read buffer and resample buffer
+  // file read buffers
   void* fread_buffer = NULL;
   void* fread_staging_buffer = NULL;
-//  void* resample_buffer = NULL;
   FILE* fp = NULL;
 
 try:
@@ -450,7 +449,10 @@ try:
   }
 
   // in case mp3 cache mode, reopen the file
+  uint32_t mp3_data_size = 0;
   if (use_mp3_cache) {
+    fseek(fp, 0, SEEK_END);
+    mp3_data_size = ftell(fp);
     fclose(fp);
     fp = fopen(pcm_cache_file_name, "rb");
     if (fp == NULL) {
@@ -472,16 +474,16 @@ try:
     skip_offset = ofs;
   }
 
-  // check file size
+  // check data content size
   fseek(fp, 0, SEEK_END);
-  uint32_t pcm_file_size = ftell(fp) - skip_offset;
+  uint32_t pcm_data_size = ftell(fp) - skip_offset;
   fseek(fp, skip_offset, SEEK_SET);
 
   // allocate file read buffer
   //   mp3 ... full read
   //   pcm ... incremental (max 2 sec)
   size_t fread_buffer_len = 
-    input_format == FORMAT_MP3 ? 2 + pcm_file_size / sizeof(int16_t) : 
+    input_format == FORMAT_MP3 ? 2 + pcm_data_size / sizeof(int16_t) : 
     input_format == FORMAT_YM2608 ? CHAIN_TABLE_BUFFER_BYTES / 4 :
     pcm_freq * pcm_channels * 2;
   if (input_format != FORMAT_ADPCM) {   // ADPCM can be directly loaded to chain tables
@@ -491,16 +493,6 @@ try:
       goto catch;
     }
   }
-
-  // allocate resampling buffer
-//  size_t resample_buffer_len = adpcm_output_freq * 2 + 32;     // max 2 second samples + error allowance
-//  if (input_format != FORMAT_ADPCM) {   // ADPCM can be directly loaded into chain tables without resampling
-//    resample_buffer = himem_malloc(resample_buffer_len * sizeof(int16_t), 0);
-//    if (resample_buffer == NULL) {
-//      printf("\rerror: resampling buffer memory allocation error.\n");
-//      goto catch;
-//    }
-//  }
 
   // load all of mp3 audio content into memory
   if (input_format == FORMAT_MP3) {
@@ -516,12 +508,12 @@ try:
       size_t len = fread(fread_staging_buffer, 1, FREAD_STAGING_BUFFER_BYTES, fp);
       memcpy(fread_buffer + read_len, fread_staging_buffer, len);
       read_len += len;
-    } while (read_len < pcm_file_size);
+    } while (read_len < pcm_data_size);
     fclose(fp);
     fp = NULL;
     himem_free(fread_staging_buffer, 0);
     fread_staging_buffer = NULL;
-    if (mp3_decode_setup(&mp3_decoder, fread_buffer, pcm_file_size, mp3_quality) != 0) {
+    if (mp3_decode_setup(&mp3_decoder, fread_buffer, pcm_data_size, mp3_quality) != 0) {
       printf("\rerror: MP3 decoder initialization error.\n");
       goto catch;
     }
@@ -534,9 +526,9 @@ try:
     printf("\n");
 
     printf("File name     : %s\n", pcm_file_name);
-    printf("Data size     : %d [bytes]\n", pcm_file_size);
+    printf("Data size     : %d [bytes]\n", use_mp3_cache ? mp3_data_size : pcm_data_size);
     printf("Data format   : %s\n", 
-      input_format == FORMAT_MP3 ? "MP3" : 
+      input_format == FORMAT_MP3 || use_mp3_cache ? "MP3" : 
       input_format == FORMAT_WAV ? "WAV" :
       input_format == FORMAT_YM2608 ? "ADPCM(YM2608)" :
       input_format == FORMAT_RAW && !use_little_endian ? "16bit signed raw PCM (big)" : 
@@ -547,21 +539,21 @@ try:
       float pcm_1sec_size = pcm_freq * 0.5;
       printf("PCM frequency : %d [Hz]\n", pcm_freq);
       printf("PCM channels  : %s\n", "mono");
-      printf("PCM length    : %4.2f [sec]\n", (float)pcm_file_size / pcm_1sec_size);
+      printf("PCM length    : %4.2f [sec]\n", (float)pcm_data_size / pcm_1sec_size);
     }
 
     if (!use_mp3_cache && input_format == FORMAT_RAW) {
       float pcm_1sec_size = pcm_freq * 2;
       printf("PCM frequency : %d [Hz]\n", pcm_freq);
       printf("PCM channels  : %s\n", pcm_channels == 1 ? "mono" : "stereo");
-      printf("PCM length    : %4.2f [sec]\n", (float)pcm_file_size / pcm_channels / pcm_1sec_size);
+      printf("PCM length    : %4.2f [sec]\n", (float)pcm_data_size / pcm_channels / pcm_1sec_size);
     }
 
     if (!use_mp3_cache && input_format == FORMAT_YM2608) {
       float pcm_1sec_size = pcm_freq * 0.5;
       printf("PCM frequency : %d [Hz]\n", pcm_freq);
       printf("PCM channels  : %s\n", pcm_channels == 1 ? "mono" : "stereo");
-      printf("PCM length    : %4.2f [sec]\n", (float)pcm_file_size / pcm_channels / pcm_1sec_size);
+      printf("PCM length    : %4.2f [sec]\n", (float)pcm_data_size / pcm_channels / pcm_1sec_size);
     }
 
     if (!use_mp3_cache && input_format == FORMAT_WAV) {
@@ -878,7 +870,9 @@ try:
 
   }
 
-  B_PRINT("\rnow playing ... push [ESC]/[Q] key to stop.\x1b[0K");
+  B_PRINT("\rnow playing ... push [ESC]/[Q] key to quit. [SPACE] to pause.\x1b[0K");
+  int16_t paused = 0;
+  uint32_t pause_time;
 
   // for kmd
   uint32_t play_start_time = ONTIME() * 10;
@@ -897,7 +891,7 @@ try:
 
   for (;;) {
    
-    // check esc key to exit
+    // check esc key to exit, space key to pause
     if (B_KEYSNS() != 0) {
       int16_t scan_code = B_KEYINP() >> 8;
       if (scan_code == KEY_SCAN_CODE_ESC || scan_code == KEY_SCAN_CODE_Q) {
@@ -905,8 +899,32 @@ try:
         B_PRINT("\rstopped.\x1b[0K");
         rc = 1;
         break;
+      } else if (scan_code == KEY_SCAN_CODE_SPACE) {
+        if (paused) {
+          if (playback_driver == DRIVER_PCM8PP) {
+            pcm8pp_resume();
+          } else if (playback_driver == DRIVER_PCM8A) {
+            pcm8a_resume();
+          } else {
+            ADPCMMOD(2);
+          }
+          paused = 0;
+          play_start_time += ONTIME() - pause_time - 50;   // adjust for KMD
+        } else {
+          if (playback_driver == DRIVER_PCM8PP) {
+            pcm8pp_pause();
+          } else if (playback_driver == DRIVER_PCM8A) {
+            pcm8a_pause();
+          } else {
+            ADPCMMOD(1);
+          }
+          paused = 1;
+          pause_time = ONTIME();
+        }
       }
     }
+
+    if (paused) continue;
 
     // exit if not playing
     if (playback_driver == DRIVER_PCM8PP) {
@@ -1217,11 +1235,7 @@ catch:
     fp = NULL;
   }
 
-  // reclaim memory buffers
-//  if (resample_buffer != NULL) {
-//    himem_free(resample_buffer, 0);
-//    resample_buffer = NULL;
-//  }
+  // reclaim file read buffers
   if (fread_staging_buffer != NULL) {
     himem_free(fread_staging_buffer, 0);
     fread_staging_buffer = NULL;
