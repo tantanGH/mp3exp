@@ -363,10 +363,9 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
   int16_t first_play = 1;
 
 loop:
-  // file read buffer and resample buffer
+  // file read buffers
   void* fread_buffer = NULL;
   void* fread_staging_buffer = NULL;
-//  void* resample_buffer = NULL;
   FILE* fp = NULL;
 
 try:
@@ -492,16 +491,6 @@ try:
     }
   }
 
-  // allocate resampling buffer
-//  size_t resample_buffer_len = adpcm_output_freq * 2 + 32;     // max 2 second samples + error allowance
-//  if (input_format != FORMAT_ADPCM) {   // ADPCM can be directly loaded into chain tables without resampling
-//    resample_buffer = himem_malloc(resample_buffer_len * sizeof(int16_t), 0);
-//    if (resample_buffer == NULL) {
-//      printf("\rerror: resampling buffer memory allocation error.\n");
-//      goto catch;
-//    }
-//  }
-
   // load all of mp3 audio content into memory
   if (input_format == FORMAT_MP3) {
     // full read with staging buffer as high memory cannot be used for direct disk read
@@ -536,7 +525,7 @@ try:
     printf("File name     : %s\n", pcm_file_name);
     printf("Data size     : %d [bytes]\n", pcm_file_size);
     printf("Data format   : %s\n", 
-      input_format == FORMAT_MP3 ? "MP3" : 
+      input_format == FORMAT_MP3 || use_mp3_cache ? "MP3" : 
       input_format == FORMAT_WAV ? "WAV" :
       input_format == FORMAT_YM2608 ? "ADPCM(YM2608)" :
       input_format == FORMAT_RAW && !use_little_endian ? "16bit signed raw PCM (big)" : 
@@ -917,7 +906,7 @@ try:
             ADPCMMOD(2);
           }
           paused = 0;
-          play_start_time += ONTIME() - pause_time;   // adjust for KMD
+          play_start_time += ONTIME() - pause_time - 50;   // adjust for KMD
         } else {
           if (playback_driver == DRIVER_PCM8PP) {
             pcm8pp_pause();
@@ -1243,11 +1232,7 @@ catch:
     fp = NULL;
   }
 
-  // reclaim memory buffers
-//  if (resample_buffer != NULL) {
-//    himem_free(resample_buffer, 0);
-//    resample_buffer = NULL;
-//  }
+  // reclaim file read buffers
   if (fread_staging_buffer != NULL) {
     himem_free(fread_staging_buffer, 0);
     fread_staging_buffer = NULL;
