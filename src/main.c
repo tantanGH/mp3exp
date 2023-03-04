@@ -449,7 +449,10 @@ try:
   }
 
   // in case mp3 cache mode, reopen the file
+  uint32_t mp3_data_size = 0;
   if (use_mp3_cache) {
+    fseek(fp, 0, SEEK_END);
+    mp3_data_size = ftell(fp);
     fclose(fp);
     fp = fopen(pcm_cache_file_name, "rb");
     if (fp == NULL) {
@@ -471,16 +474,16 @@ try:
     skip_offset = ofs;
   }
 
-  // check file size
+  // check data content size
   fseek(fp, 0, SEEK_END);
-  uint32_t pcm_file_size = ftell(fp) - skip_offset;
+  uint32_t pcm_data_size = ftell(fp) - skip_offset;
   fseek(fp, skip_offset, SEEK_SET);
 
   // allocate file read buffer
   //   mp3 ... full read
   //   pcm ... incremental (max 2 sec)
   size_t fread_buffer_len = 
-    input_format == FORMAT_MP3 ? 2 + pcm_file_size / sizeof(int16_t) : 
+    input_format == FORMAT_MP3 ? 2 + pcm_data_size / sizeof(int16_t) : 
     input_format == FORMAT_YM2608 ? CHAIN_TABLE_BUFFER_BYTES / 4 :
     pcm_freq * pcm_channels * 2;
   if (input_format != FORMAT_ADPCM) {   // ADPCM can be directly loaded to chain tables
@@ -505,12 +508,12 @@ try:
       size_t len = fread(fread_staging_buffer, 1, FREAD_STAGING_BUFFER_BYTES, fp);
       memcpy(fread_buffer + read_len, fread_staging_buffer, len);
       read_len += len;
-    } while (read_len < pcm_file_size);
+    } while (read_len < pcm_data_size);
     fclose(fp);
     fp = NULL;
     himem_free(fread_staging_buffer, 0);
     fread_staging_buffer = NULL;
-    if (mp3_decode_setup(&mp3_decoder, fread_buffer, pcm_file_size, mp3_quality) != 0) {
+    if (mp3_decode_setup(&mp3_decoder, fread_buffer, pcm_data_size, mp3_quality) != 0) {
       printf("\rerror: MP3 decoder initialization error.\n");
       goto catch;
     }
@@ -523,7 +526,7 @@ try:
     printf("\n");
 
     printf("File name     : %s\n", pcm_file_name);
-    printf("Data size     : %d [bytes]\n", pcm_file_size);
+    printf("Data size     : %d [bytes]\n", use_mp3_cache ? mp3_data_size : pcm_data_size);
     printf("Data format   : %s\n", 
       input_format == FORMAT_MP3 || use_mp3_cache ? "MP3" : 
       input_format == FORMAT_WAV ? "WAV" :
@@ -536,21 +539,21 @@ try:
       float pcm_1sec_size = pcm_freq * 0.5;
       printf("PCM frequency : %d [Hz]\n", pcm_freq);
       printf("PCM channels  : %s\n", "mono");
-      printf("PCM length    : %4.2f [sec]\n", (float)pcm_file_size / pcm_1sec_size);
+      printf("PCM length    : %4.2f [sec]\n", (float)pcm_data_size / pcm_1sec_size);
     }
 
     if (!use_mp3_cache && input_format == FORMAT_RAW) {
       float pcm_1sec_size = pcm_freq * 2;
       printf("PCM frequency : %d [Hz]\n", pcm_freq);
       printf("PCM channels  : %s\n", pcm_channels == 1 ? "mono" : "stereo");
-      printf("PCM length    : %4.2f [sec]\n", (float)pcm_file_size / pcm_channels / pcm_1sec_size);
+      printf("PCM length    : %4.2f [sec]\n", (float)pcm_data_size / pcm_channels / pcm_1sec_size);
     }
 
     if (!use_mp3_cache && input_format == FORMAT_YM2608) {
       float pcm_1sec_size = pcm_freq * 0.5;
       printf("PCM frequency : %d [Hz]\n", pcm_freq);
       printf("PCM channels  : %s\n", pcm_channels == 1 ? "mono" : "stereo");
-      printf("PCM length    : %4.2f [sec]\n", (float)pcm_file_size / pcm_channels / pcm_1sec_size);
+      printf("PCM length    : %4.2f [sec]\n", (float)pcm_data_size / pcm_channels / pcm_1sec_size);
     }
 
     if (!use_mp3_cache && input_format == FORMAT_WAV) {
