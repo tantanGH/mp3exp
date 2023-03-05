@@ -10,7 +10,7 @@ LIBMAD_DIR="${WORKING_DIR}/../libmad-0.15.1b"
 
 TARGET_FILE="MP3EXP.X"
 DOC_FILE="../MP3EXP.DOC"
-ZIP_FILE="../../MPEXP086.ZIP"
+ZIP_FILE="../../MPEXP087.ZIP"
 
 CC=${XDEV68K_DIR}/m68k-toolchain/bin/m68k-elf-gcc
 GAS2HAS="${XDEV68K_DIR}/util/x68k_gas2has.pl -cpu 68000 -inc doscall.inc -inc iocscall.inc"
@@ -60,6 +60,8 @@ function do_compile() {
 
 function build_mp3exp() {
   do_compile . "crtc himem nanojpeg png_buffer png pcm8 pcm8a pcm8pp adpcm_encode raw_decode ym2608_decode wav_decode mp3_decode kmd main" "utf16_cp932 ym2608_adpcmlib"
+#  do_compile . "adpcm_encode raw_decode ym2608_decode wav_decode mp3_decode kmd main" ""
+
   if [ $? != 0 ]; then
     return $?
   fi

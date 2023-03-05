@@ -21,13 +21,16 @@ typedef struct {
 } KMD_EVENT;
 
 typedef struct {
+  int16_t large;
+  int16_t cursor_pos_y;
   size_t current_event_ofs;
   size_t num_events;
   KMD_EVENT* events;
 } KMD_HANDLE;
 
-int32_t kmd_init(KMD_HANDLE* kmd, FILE* fp);
+int32_t kmd_init(KMD_HANDLE* kmd, FILE* fp, int16_t large);
 void kmd_close(KMD_HANDLE* kmd);
+void kmd_preserve_cursor_position(KMD_HANDLE* kmd);
 KMD_EVENT* kmd_next_event(KMD_HANDLE* kmd);
 void kmd_print_event_message(KMD_HANDLE* kmd, KMD_EVENT* event);
 void kmd_erase_event_message(KMD_HANDLE* kmd, KMD_EVENT* event);
