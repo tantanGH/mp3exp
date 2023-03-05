@@ -92,7 +92,7 @@ static uint8_t encode(int16_t current_data, int16_t last_estimate, int16_t* step
 //
 //  initialize adpcm encoder handle
 //
-int32_t adpcm_encode_init(ADPCM_ENCODE_HANDLE* adpcm) {
+int32_t adpcm_encode_init(ADPCM_ENCODE_HANDLE* adpcm, int16_t volume) {
 
   int32_t rc = -1;
 
@@ -100,6 +100,7 @@ int32_t adpcm_encode_init(ADPCM_ENCODE_HANDLE* adpcm) {
   adpcm->last_estimate = 0;
   adpcm->num_samples = 0;
   adpcm->resample_counter = 0;
+  adpcm->volume = volume;
 
   rc = 0;
 
@@ -147,6 +148,9 @@ int32_t adpcm_encode_resample(ADPCM_ENCODE_HANDLE* adpcm, uint8_t* adpcm_buffer,
       int16_t mch = little_endian ? p[0] + p[1] * 256 : pcm_buffer[ pcm_buffer_ofs ];
       xx = mch / 16;
       pcm_buffer_ofs += 1;
+    }
+    if (adpcm->volume != 8) {
+      xx = (int16_t)(xx * adpcm->volume / 8.0);
     }
 
     // encode to 4bit ADPCM data

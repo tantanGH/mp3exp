@@ -409,7 +409,7 @@ try:
   YM2608_DECODE_HANDLE ym2608_decoder = { 0 };
 
   // init adpcm (msm6258v) encoder
-  if (adpcm_encode_init(&adpcm_encoder) != 0) {
+  if (adpcm_encode_init(&adpcm_encoder, playback_volume) != 0) {
     printf("error: ADPCM encoder initialization error.\n");
     goto catch;
   }

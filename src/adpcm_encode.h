@@ -10,9 +10,10 @@ typedef struct {
   int16_t last_estimate;
   size_t num_samples;
   size_t resample_counter;
+  int16_t volume;
 } ADPCM_ENCODE_HANDLE;
 
-int32_t adpcm_encode_init(ADPCM_ENCODE_HANDLE* adpcm);
+int32_t adpcm_encode_init(ADPCM_ENCODE_HANDLE* adpcm, int16_t volume);
 void adpcm_encode_close(ADPCM_ENCODE_HANDLE* adpcm);
 int32_t adpcm_encode_resample(ADPCM_ENCODE_HANDLE* adpcm, uint8_t* adpcm_buffer, int32_t adpcm_freq, int16_t* pcm_buffer, size_t pcm_buffer_len, int32_t pcm_freq, int16_t pcm_channels, int16_t little_endian);
 
