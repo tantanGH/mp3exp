@@ -311,11 +311,9 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
     pcm8_type = PCM8_TYPE_PCM8;
   }
 
-  // PCM8A/PCM8PP is mandatory for MP3/WAV/ADPCM(YM2608)
-//  if (input_format == FORMAT_MP3 || input_format == FORMAT_YM2608) {
+  // PCM8A/PCM8PP is mandatory for MP3
   if (input_format == FORMAT_MP3) {
     if (pcm8_type != PCM8_TYPE_PCM8A && pcm8_type != PCM8_TYPE_PCM8PP) {
-//      printf("error: PCM8A (>=1.02) or PCM8PP (>=0.83d) is required for MP3/ADPCM(YM2608) playback.\n");
       printf("error: PCM8A (>=1.02) or PCM8PP (>=0.83d) is required for MP3 playback.\n");
       goto exit;    
     }
@@ -331,23 +329,6 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
   } else {
     playback_driver = DRIVER_MP3EXP;
     if (playback_volume == 0) playback_volume = 8;
-  }
-
-  // check kmd file existence
-  static uint8_t kmd_file_name[ MAX_PATH_LEN ];
-  KMD_HANDLE kmd = { 0 };
-  int16_t use_kmd = 0;
-  struct stat kmd_stat_buf;
-  strcpy(kmd_file_name, pcm_file_name);
-  strcpy(kmd_file_name + strlen(kmd_file_name) - 4, ".kmd");
-  if (stat(kmd_file_name, &kmd_stat_buf) == 0) {
-    FILE* fp_kmd = fopen(kmd_file_name, "r");
-    kmd_init(&kmd, fp_kmd, full_screen);
-    fclose(fp_kmd);
-    use_kmd = 1;
-  } else {
-    kmd_file_name[0] = '\0';
-    use_kmd = 0;
   }
 
   // cursor off
@@ -390,6 +371,23 @@ loop:
   FILE* fp = NULL;
 
 try:
+
+  // check kmd file existence
+  static uint8_t kmd_file_name[ MAX_PATH_LEN ];
+  KMD_HANDLE kmd = { 0 };
+  int16_t use_kmd = 0;
+  struct stat kmd_stat_buf;
+  strcpy(kmd_file_name, pcm_file_name);
+  strcpy(kmd_file_name + strlen(kmd_file_name) - 4, ".kmd");
+  if (stat(kmd_file_name, &kmd_stat_buf) == 0) {
+    FILE* fp_kmd = fopen(kmd_file_name, "r");
+    kmd_init(&kmd, fp_kmd, full_screen);
+    fclose(fp_kmd);
+    use_kmd = 1;
+  } else {
+    kmd_file_name[0] = '\0';
+    use_kmd = 0;
+  }
 
   // init chain tables
   static CHAIN_TABLE chain_tables[ MAX_CHAINS ];
@@ -591,11 +589,14 @@ try:
   
     // describe MP3 information
     if (use_mp3_cache || input_format == FORMAT_MP3) {
-      printf("MP3 quality   : %s\n",
-        use_mp3_cache ? "cache use" :
-        mp3_quality == 2 ? "low" :
-        mp3_quality == 1 ? "normal" : 
-        "high");
+      if (use_mp3_cache) {
+        printf("MP3 quality   : %s (%s)\n", "cache use", pcm_cache_file_name);
+      } else {
+        printf("MP3 quality   : %s\n",
+          mp3_quality == 2 ? "low" :
+          mp3_quality == 1 ? "normal" : 
+          "high");
+      }
       if (mp3_decoder.mp3_title != NULL) {
         printf("MP3 title     : %s\n", mp3_decoder.mp3_title);
       }
@@ -837,6 +838,20 @@ try:
           adpcm_encode_resample(&adpcm_encoder, chain_tables[i].buffer, adpcm_output_freq, fread_buffer, fread_buffer_len, pcm_freq, pcm_channels, 1);
         chain_tables[i].buffer_bytes = resampled_len;
 
+      } else if (input_format == FORMAT_MP3) {
+
+        // MP3 (resampled)
+        size_t resampled_len;
+        if (mp3_decode_resample_adpcm_encode(&mp3_decoder, &adpcm_encoder, chain_tables[i].buffer, CHAIN_TABLE_BUFFER_BYTES, adpcm_output_freq, &resampled_len) != 0) {
+          printf("\rerror: mp3 decode error.\x1b[0K");
+          goto catch;
+        }
+        chain_tables[i].buffer_bytes = resampled_len;
+        if (resampled_len == 0) {
+          chain_tables[i].next = NULL;
+          end_flag = 1;
+        }
+
       }
 
     }
@@ -970,7 +985,13 @@ try:
       if (pcm8pp_get_data_length(0) == 0) {
       //if (B_BPEEK(REG_DMAC_CH2_CSR) & 0x80) {   // ch2 dmac operation complete?
         if (end_flag) { 
-          if (use_kmd) B_PRINT("\n\n");
+          if (use_kmd) {
+            if (!full_screen) {
+              B_PRINT("\r\x1b[1B\x1b[0K\x1b[1A\x1b[0K\x1b[1A\x1b[0K\x1b[1A\x1b[0K");
+            } else {
+              B_PRINT("\r\x1b[0K\x1b[1A\x1b[0K\x1b[1A\x1b[0K");             
+            }
+          }
           B_PRINT("\rfinished.\x1b[0K");
           rc = 0;
         } else {
@@ -982,7 +1003,13 @@ try:
     } else if (playback_driver == DRIVER_PCM8A) {
       if (pcm8a_get_data_length(0) == 0) {
         if (end_flag) { 
-          if (use_kmd) B_PRINT("\n\n");
+          if (use_kmd) {
+            if (!full_screen) {
+              B_PRINT("\r\x1b[1B\x1b[0K\x1b[1A\x1b[0K\x1b[1A\x1b[0K\x1b[1A\x1b[0K");
+            } else {
+              B_PRINT("\r\x1b[0K\x1b[1A\x1b[0K\x1b[1A\x1b[0K");             
+            }
+          }
           B_PRINT("\rfinished.\x1b[0K");
           rc = 0;
         } else {
@@ -994,7 +1021,13 @@ try:
     } else {
       if (ADPCMSNS() == 0) {
         if (end_flag) {
-          if (use_kmd) B_PRINT("\n\n");
+          if (use_kmd) {
+            if (!full_screen) {
+              B_PRINT("\r\x1b[1B\x1b[0K\x1b[1A\x1b[0K\x1b[1A\x1b[0K\x1b[1A\x1b[0K");
+            } else {
+              B_PRINT("\r\x1b[0K\x1b[1A\x1b[0K\x1b[1A\x1b[0K");             
+            }
+          }
           B_PRINT("\rfinished.\x1b[0K");
           rc = 0;
         } else {
@@ -1259,6 +1292,20 @@ try:
             adpcm_encode_resample(&adpcm_encoder, cta->buffer, adpcm_output_freq, fread_buffer, fread_len, pcm_freq, pcm_channels, 1);
           cta->buffer_bytes = resampled_len;
 
+        } else if (input_format == FORMAT_MP3) {
+
+          // MP3 (resampled)
+          size_t resampled_len;
+          if (mp3_decode_resample_adpcm_encode(&mp3_decoder, &adpcm_encoder, cta->buffer, CHAIN_TABLE_BUFFER_BYTES, adpcm_output_freq, &resampled_len) != 0) {
+            printf("\rerror: mp3 decode error.\x1b[0K");
+            goto catch;
+          }
+          cta->buffer_bytes = resampled_len;
+          if (resampled_len == 0) {
+            cta->next = NULL;
+            end_flag = 1;
+          }
+
         }
 
       }
@@ -1275,8 +1322,8 @@ try:
 
 catch:
 
-  // dummy wait to make sure DMAC stop (400 msec)
-  for (int32_t t0 = ONTIME(); ONTIME() < t0 + 40;) {}
+  // dummy wait to make sure DMAC stop (200 msec)
+  for (int32_t t0 = ONTIME(); ONTIME() < t0 + 20;) {}
 
   // reset driver
   if (playback_driver == DRIVER_PCM8PP) {
@@ -1349,7 +1396,9 @@ catch:
 
   // loop check
   if (rc == 0) {
-    if (loop_count == 0 || --loop_count > 0) goto loop;
+    if (loop_count == 0 || --loop_count > 0) {
+      goto loop;
+    }
   }
 
   B_PRINT("\r\n");

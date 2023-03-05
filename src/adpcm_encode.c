@@ -17,7 +17,7 @@ static const int16_t step_size[] = {
 //
 //  MSM6258V ADPCM decode
 //
-static int16_t decode(uint8_t code, int16_t* step_index, int16_t last_data) {
+int16_t msm6258v_decode(uint8_t code, int16_t* step_index, int16_t last_data) {
 
   int16_t si = *step_index;
   int16_t ss = step_size[ si ];
@@ -60,7 +60,7 @@ static int16_t decode(uint8_t code, int16_t* step_index, int16_t last_data) {
 //
 //  MSM6258V ADPCM encode
 //
-static uint8_t encode(int16_t current_data, int16_t last_estimate, int16_t* step_index, int16_t* new_estimate) {
+uint8_t msm6258v_encode(int16_t current_data, int16_t last_estimate, int16_t* step_index, int16_t* new_estimate) {
 
   int16_t ss = step_size[ *step_index ];
 
@@ -84,7 +84,7 @@ static uint8_t encode(int16_t current_data, int16_t last_estimate, int16_t* step
   } 
 
   // need to use decoder to estimate
-  *new_estimate = decode(code, step_index, last_estimate);
+  *new_estimate = msm6258v_decode(code, step_index, last_estimate);
 
   return code;
 }
@@ -138,19 +138,24 @@ int32_t adpcm_encode_resample(ADPCM_ENCODE_HANDLE* adpcm, uint8_t* adpcm_buffer,
         }
         adpcm->resample_counter -= pcm_freq;
 
-        // get 12bit PCM mono data
-        int16_t xx = 0;
-        uint8_t* p = (uint8_t*)(&pcm_buffer[ pcm_buffer_ofs ]);
+        // get 16bit PCM stereo data
+        int16_t lch, rch;
+        if (!little_endian) {
+          lch = pcm_buffer[ pcm_buffer_ofs ];
+          rch = pcm_buffer[ pcm_buffer_ofs + 1];          
+        } else {
+          uint8_t* p = (uint8_t*)(&pcm_buffer[ pcm_buffer_ofs ]);
+          lch = p[0] + p[1] * 256;
+          rch = p[2] + p[3] * 256;
+        }
 
-        // 16bit PCM LR to 12bit PCM mono
-        int16_t lch = little_endian ? p[0] + p[1] * 256 : pcm_buffer[ pcm_buffer_ofs ];
-        int16_t rch = little_endian ? p[2] + p[3] * 256 : pcm_buffer[ pcm_buffer_ofs + 1];
-        xx = (lch + rch) / 2 / 16;
+        // get 12bit PCM mono data
+        int16_t xx = (lch + rch) / 2 / 16;
         pcm_buffer_ofs += 2;
 
         // encode to 4bit ADPCM data
         int16_t new_estimate;
-        uint8_t code = encode(xx, adpcm->last_estimate, &adpcm->step_index, &new_estimate);
+        uint8_t code = msm6258v_encode(xx, adpcm->last_estimate, &adpcm->step_index, &new_estimate);
         adpcm->last_estimate = new_estimate;
 
         if (adpcm_buffer_ofs >= 0xff00) {
@@ -181,18 +186,22 @@ int32_t adpcm_encode_resample(ADPCM_ENCODE_HANDLE* adpcm, uint8_t* adpcm_buffer,
         }
         adpcm->resample_counter -= pcm_freq;
 
-        // get 12bit PCM mono data
-        int16_t xx = 0;
-        uint8_t* p = (uint8_t*)(&pcm_buffer[ pcm_buffer_ofs ]);
+        // get 16bit PCM mono data
+        int16_t mch;
+        if (!little_endian) {
+          mch = pcm_buffer[ pcm_buffer_ofs ];
+        } else {
+          uint8_t* p = (uint8_t*)(&pcm_buffer[ pcm_buffer_ofs ]);
+          mch = p[0] + p[1] * 256;
+        }
 
         // 16bit PCM mono to 12bit PCM mono
-        int16_t mch = little_endian ? p[0] + p[1] * 256 : pcm_buffer[ pcm_buffer_ofs ];
-        xx = mch / 16;
+        int16_t xx = mch / 16;
         pcm_buffer_ofs += 1;
 
         // encode to 4bit ADPCM data
         int16_t new_estimate;
-        uint8_t code = encode(xx, adpcm->last_estimate, &adpcm->step_index, &new_estimate);
+        uint8_t code = msm6258v_encode(xx, adpcm->last_estimate, &adpcm->step_index, &new_estimate);
         adpcm->last_estimate = new_estimate;
 
         if (adpcm_buffer_ofs >= 0xff00) {
@@ -227,19 +236,24 @@ int32_t adpcm_encode_resample(ADPCM_ENCODE_HANDLE* adpcm, uint8_t* adpcm_buffer,
         }
         adpcm->resample_counter -= pcm_freq;
 
-        // get 12bit PCM mono data
-        int16_t xx = 0;
-        uint8_t* p = (uint8_t*)(&pcm_buffer[ pcm_buffer_ofs ]);
+        // get 16bit PCM stereo data
+        int16_t lch, rch;
+        if (!little_endian) {
+          lch = pcm_buffer[ pcm_buffer_ofs ];
+          rch = pcm_buffer[ pcm_buffer_ofs + 1];          
+        } else {
+          uint8_t* p = (uint8_t*)(&pcm_buffer[ pcm_buffer_ofs ]);
+          lch = p[0] + p[1] * 256;
+          rch = p[2] + p[3] * 256;
+        }
 
         // 16bit PCM LR to 12bit PCM mono
-        int16_t lch = little_endian ? p[0] + p[1] * 256 : pcm_buffer[ pcm_buffer_ofs ];
-        int16_t rch = little_endian ? p[2] + p[3] * 256 : pcm_buffer[ pcm_buffer_ofs + 1];
-        xx = (int16_t)((lch + rch) * adpcm->volume / ( 2 * 16 * 8 ));
+        int16_t xx = (int16_t)((lch + rch) * adpcm->volume / ( 2 * 16 * 8 ));
         pcm_buffer_ofs += 2;
 
         // encode to 4bit ADPCM data
         int16_t new_estimate;
-        uint8_t code = encode(xx, adpcm->last_estimate, &adpcm->step_index, &new_estimate);
+        uint8_t code = msm6258v_encode(xx, adpcm->last_estimate, &adpcm->step_index, &new_estimate);
         adpcm->last_estimate = new_estimate;
 
         if (adpcm_buffer_ofs >= 0xff00) {
@@ -270,18 +284,22 @@ int32_t adpcm_encode_resample(ADPCM_ENCODE_HANDLE* adpcm, uint8_t* adpcm_buffer,
         }
         adpcm->resample_counter -= pcm_freq;
 
-        // get 12bit PCM mono data
-        int16_t xx = 0;
-        uint8_t* p = (uint8_t*)(&pcm_buffer[ pcm_buffer_ofs ]);
+        // get 16bit PCM mono data
+        int16_t mch;
+        if (!little_endian) {
+          mch = pcm_buffer[ pcm_buffer_ofs ];
+        } else {
+          uint8_t* p = (uint8_t*)(&pcm_buffer[ pcm_buffer_ofs ]);
+          mch = p[0] + p[1] * 256;
+        }
 
         // 16bit PCM mono to 12bit PCM mono
-        int16_t mch = little_endian ? p[0] + p[1] * 256 : pcm_buffer[ pcm_buffer_ofs ];
-        xx = (int16_t)( mch * adpcm->volume / ( 16 * 8 ));
+        int16_t xx = (int16_t)( mch * adpcm->volume / ( 16 * 8 ));
         pcm_buffer_ofs += 1;
 
         // encode to 4bit ADPCM data
         int16_t new_estimate;
-        uint8_t code = encode(xx, adpcm->last_estimate, &adpcm->step_index, &new_estimate);
+        uint8_t code = msm6258v_encode(xx, adpcm->last_estimate, &adpcm->step_index, &new_estimate);
         adpcm->last_estimate = new_estimate;
 
         if (adpcm_buffer_ofs >= 0xff00) {

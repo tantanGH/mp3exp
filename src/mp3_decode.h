@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include "mad.h"
+#include "adpcm_encode.h"
 
 typedef struct mad_stream MAD_STREAM;
 typedef struct mad_synth MAD_SYNTH;
@@ -42,7 +43,8 @@ int32_t mp3_decode_init(MP3_DECODE_HANDLE* decode);
 void mp3_decode_close(MP3_DECODE_HANDLE* decode);
 int32_t mp3_decode_parse_tags(MP3_DECODE_HANDLE* decode, int16_t pic_brightness, int16_t pic_half_size, FILE* fp);
 int32_t mp3_decode_setup(MP3_DECODE_HANDLE* decode, void* mp3_data, size_t mp3_data_len, int16_t mp3_quality);
-int32_t mp3_decode_resample(MP3_DECODE_HANDLE* decode, int16_t* resample_buffer, size_t resample_buffer_len, int16_t resample_freq, size_t* resampled_len);
 int32_t mp3_decode_full(MP3_DECODE_HANDLE* decode, int16_t* decode_buffer, size_t decode_buffer_bytes, size_t* decoded_bytes);
+int32_t mp3_decode_resample(MP3_DECODE_HANDLE* decode, int16_t* resample_buffer, size_t resample_buffer_len, int16_t resample_freq, size_t* resampled_len);
+int32_t mp3_decode_resample_adpcm_encode(MP3_DECODE_HANDLE* decode, ADPCM_ENCODE_HANDLE* adpcm, uint8_t* adpcm_buffer, size_t adpcm_buffer_len, int16_t resample_freq, size_t* resampled_len);
 
 #endif
