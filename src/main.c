@@ -312,12 +312,12 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
   }
 
   // PCM8A/PCM8PP is mandatory for MP3
-  if (input_format == FORMAT_MP3) {
-    if (pcm8_type != PCM8_TYPE_PCM8A && pcm8_type != PCM8_TYPE_PCM8PP) {
-      printf("error: PCM8A (>=1.02) or PCM8PP (>=0.83d) is required for MP3 playback.\n");
-      goto exit;    
-    }
-  }
+//  if (input_format == FORMAT_MP3) {
+//    if (pcm8_type != PCM8_TYPE_PCM8A && pcm8_type != PCM8_TYPE_PCM8PP) {
+//      printf("error: PCM8A (>=1.02) or PCM8PP (>=0.83d) is required for MP3 playback.\n");
+//      goto exit;    
+//    }
+//  }
 
   // playback driver selection
   if (pcm8_type == PCM8_TYPE_PCM8PP) {
@@ -390,7 +390,11 @@ try:
   }
 
   // init chain tables
-  static CHAIN_TABLE chain_tables[ MAX_CHAINS ];
+  CHAIN_TABLE* chain_tables = (CHAIN_TABLE*)himem_malloc(sizeof(CHAIN_TABLE) * MAX_CHAINS, 0);
+  if (chain_tables == NULL) {
+    printf("error: out of memory. (cannot allocate chain tables in main memory)\n");
+    goto catch;
+  }
   for (int16_t i = 0; i < num_chains; i++) {
     chain_tables[i].buffer = NULL;
     chain_tables[i].buffer_bytes = 0;
@@ -398,6 +402,10 @@ try:
   }
   for (int16_t i = 0; i < num_chains; i++) {
     chain_tables[i].buffer = himem_malloc(CHAIN_TABLE_BUFFER_BYTES, 0);
+    if (chain_tables[i].buffer == NULL) {
+      printf("error: out of memory. (cannot allocate chain table buffer in main memory)\n");
+      goto catch;      
+    }
   }
 
   // encoder
@@ -1388,6 +1396,7 @@ catch:
       himem_free(chain_tables[i].buffer, 0);
     }
   }
+  himem_free(chain_tables, 0);
 
   // close kmd handle
   if (use_kmd) {
