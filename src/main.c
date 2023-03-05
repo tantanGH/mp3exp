@@ -86,7 +86,7 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
   // parse command line options
   uint8_t* pcm_file_name = NULL;
   int16_t playback_driver = DRIVER_MP3EXP;
-  int16_t playback_volume = 7;
+  int16_t playback_volume = 0;
   int16_t loop_count = 1;
   int16_t mp3_quality = 1;
   int16_t mp3_pic_brightness = 0;
@@ -324,10 +324,13 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
   // playback driver selection
   if (pcm8_type == PCM8_TYPE_PCM8PP) {
     playback_driver = DRIVER_PCM8PP;
+    if (playback_volume == 0) playback_volume = 7;
   } else if (pcm8_type == PCM8_TYPE_PCM8A) {
     playback_driver = DRIVER_PCM8A;
+    if (playback_volume == 0) playback_volume = 7;
   } else {
     playback_driver = DRIVER_MP3EXP;
+    if (playback_volume == 0) playback_volume = 8;
   }
 
   // check kmd file existence
@@ -1224,7 +1227,7 @@ try:
             end_flag = 1;
           }
           size_t resampled_len = 
-            adpcm_encode_resample(&adpcm_encoder, cta->buffer, adpcm_output_freq, fread_buffer, fread_buffer_len, pcm_freq, pcm_channels, use_little_endian);
+            adpcm_encode_resample(&adpcm_encoder, cta->buffer, adpcm_output_freq, fread_buffer, fread_len, pcm_freq, pcm_channels, use_little_endian);
           cta->buffer_bytes = resampled_len;
 
         } else if (input_format == FORMAT_YM2608) {
@@ -1253,7 +1256,7 @@ try:
             end_flag = 1;
           }
           size_t resampled_len = 
-            adpcm_encode_resample(&adpcm_encoder, cta->buffer, adpcm_output_freq, fread_buffer, fread_buffer_len, pcm_freq, pcm_channels, 1);
+            adpcm_encode_resample(&adpcm_encoder, cta->buffer, adpcm_output_freq, fread_buffer, fread_len, pcm_freq, pcm_channels, 1);
           cta->buffer_bytes = resampled_len;
 
         }
@@ -1271,6 +1274,10 @@ try:
   }
 
 catch:
+
+  // dummy wait to make sure DMAC stop (400 msec)
+  for (int32_t t0 = ONTIME(); ONTIME() < t0 + 40;) {}
+
   // reset driver
   if (playback_driver == DRIVER_PCM8PP) {
     pcm8pp_pause();
