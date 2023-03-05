@@ -90,7 +90,7 @@ int32_t wav_decode_parse_header(WAV_DECODE_HANDLE* wav, FILE* fp) {
   // Subchunk1Size
   bytes_read += fread(buf, sizeof(uint8_t), 4, fp);
   int16_t format = buf[0];
-  if (format != 16) {
+  if (format != 16 && format != 18) {
     printf("error: wav unknown format (%d).\n", format);
     goto exit;
   }
@@ -136,6 +136,11 @@ int32_t wav_decode_parse_header(WAV_DECODE_HANDLE* wav, FILE* fp) {
   if (wav->bits_per_sample != 16) {
     printf("error: wav unsupported bit per sample (%d).\n", wav->bits_per_sample);
     goto exit;
+  }
+
+  // skip 2 bytes if format is 18
+  if (format == 18) {
+    bytes_read += fread(buf, sizeof(uint8_t), 2, fp);
   }
 
   // Subchunk2ID

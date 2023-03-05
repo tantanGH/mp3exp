@@ -29,6 +29,8 @@
 
 //#define DEBUG
 
+static int32_t g_funckey_mode = -1;
+
 // abort vector handler
 static void abort_application() {
 
@@ -37,12 +39,17 @@ static void abort_application() {
 
   // cursor on
   C_CURON();
- 
+
+  // funckey mode
+  if (g_funckey_mode >= 0) {
+    C_FNKMOD(g_funckey_mode);
+  }
+  
   // flush key buffer
   while (B_KEYSNS() != 0) {
     B_KEYINP();
   }
- 
+
   B_PRINT("aborted.\n");
 
   exit(1);
@@ -56,7 +63,7 @@ static void show_help_message() {
   printf("     -l[n] ... loop count (none:endless, default:1)\n");
   printf("     -q[n] ... mp3 quality (0:high, 1:normal, 2:low, default:1)\n");
   printf("     -t[n] ... mp3 album art display brightness (1-100, default:off)\n");
-  printf("     -x    ... mp3 album art display full size\n");
+  printf("     -x    ... full screen\n");
   printf("\n");
   printf("     -b<n> ... buffer size [x 64KB] (2-96,default:4)\n");
   printf("     -u    ... use 060turbo/TS-6BE16 high memory\n");
@@ -83,7 +90,7 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
   int16_t loop_count = 1;
   int16_t mp3_quality = 1;
   int16_t mp3_pic_brightness = 0;
-  int16_t mp3_pic_half_size = 1;
+  int16_t full_screen = 0;
   int16_t num_chains = 4;
   int16_t use_high_memory = 0;
   int16_t mp3_cache_unuse = 0;
@@ -113,7 +120,7 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
           goto exit;
         }
       } else if (argv[i][1] == 'x') {
-        mp3_pic_half_size = 0;
+        full_screen = 1;
       } else if (argv[i][1] == 'b') {
         num_chains = atoi(argv[i]+2);
         if (num_chains < 2 || num_chains > 96) {
@@ -330,7 +337,7 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
   strcpy(kmd_file_name + strlen(kmd_file_name) - 4, ".kmd");
   if (stat(kmd_file_name, &kmd_stat_buf) == 0) {
     FILE* fp_kmd = fopen(kmd_file_name, "r");
-    kmd_init(&kmd, fp_kmd);
+    kmd_init(&kmd, fp_kmd, full_screen);
     fclose(fp_kmd);
     use_kmd = 1;
   } else {
@@ -350,6 +357,15 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
     B_SUPER(0);
     G_CLR_ON();
     crtc_set_extra_mode(0);
+  }
+
+  // full screen mode
+  if (full_screen) {
+    // function key display off
+    g_funckey_mode = C_FNKMOD(-1);
+    C_FNKMOD(3);
+    C_CLS_AL();
+    if (mp3_pic_brightness == 0) G_CLR_ON();
   }
 
   // reset PCM8 / PCM8A / PCM8PP / IOCS ADPCM
@@ -439,7 +455,7 @@ try:
   size_t skip_offset = 0;
   if (use_mp3_cache || input_format == FORMAT_MP3) {
     printf("\rparsing MP3 ID3v2 tag and album art...");
-    int32_t ofs = mp3_decode_parse_tags(&mp3_decoder, mp3_pic_brightness, mp3_pic_half_size, fp);
+    int32_t ofs = mp3_decode_parse_tags(&mp3_decoder, mp3_pic_brightness, !full_screen, fp);
     if (ofs < 0) {
       printf("\rerror: MP3 ID3v2 tag parse error.\x1b[0K\n");
       goto catch;
@@ -878,6 +894,7 @@ try:
   uint32_t play_start_time = ONTIME() * 10;
   if (use_kmd) {
     B_PRINT("\n\n");
+    kmd_preserve_cursor_position(&kmd);
   }
 
   // dummy wait to make sure DMAC start (200 msec)
@@ -1302,6 +1319,11 @@ exit:
  
   // cursor on
   C_CURON();
+
+  // function key mode
+  if (g_funckey_mode >= 0) {
+    C_FNKMOD(g_funckey_mode);
+  }
 
   // resume abort vectors
   INTVCS(0xFFF1, (int8_t*)abort_vector1);

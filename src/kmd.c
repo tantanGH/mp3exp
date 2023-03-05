@@ -12,13 +12,15 @@ static uint8_t BLANKS[] = "                                                     
 //
 //  initialize kmd handle
 //
-int32_t kmd_init(KMD_HANDLE* kmd, FILE* fp) {
+int32_t kmd_init(KMD_HANDLE* kmd, FILE* fp, int16_t large) {
 
   // default return code
   int32_t rc = -1;
 
   // reset attributes
   if (kmd == NULL) goto exit;
+  kmd->large = large;
+  kmd->cursor_pos_y = -1;
   kmd->current_event_ofs = 0;
   kmd->num_events = 0;
   kmd->events = NULL;
@@ -84,6 +86,45 @@ void kmd_close(KMD_HANDLE* kmd) {
 }
 
 //
+//  preserve cursor Y pos
+//
+void kmd_preserve_cursor_position(KMD_HANDLE* kmd) {
+  kmd->cursor_pos_y = B_LOCATE(-1,-1) & 0xff;
+}
+
+// put text in 12x24/24x24 font
+static void put_text24(uint16_t x, uint16_t y, uint16_t color, const uint8_t* text) {
+
+  int16_t len = strlen(text);
+  uint16_t fy = y;
+
+  for (int16_t i = 0; i < len; i++) {
+
+    uint16_t fx = x + 12*i;
+
+    // SJIS code?
+    uint16_t code = text[i];
+    if (i < len-1 && (text[i] >= 0x81 && text[i] <= 0x9f) || (text[i] >= 0xe0 && text[i] <= 0xfc)) {
+      code = text[i] * 256 + text[i+1];
+      i++;
+    }
+
+    static struct FNTBUF fb;
+    FNTGET(12, code, &fb);
+    if (fb.xl == 0) fb.xl = (code < 0x100) ? 12 : 24;      // IOCS bug?
+
+    if (color & 0x01) {
+      TCOLOR(1);
+      TEXTPUT(fx, fy, &fb);
+    }
+    if (color & 0x02) {
+      TCOLOR(2);
+      TEXTPUT(fx, fy, &fb);
+    }
+  }
+}
+
+//
 //  get next kmd event
 //
 KMD_EVENT* kmd_next_event(KMD_HANDLE* kmd) {
@@ -99,15 +140,19 @@ KMD_EVENT* kmd_next_event(KMD_HANDLE* kmd) {
 void kmd_erase_event_message(KMD_HANDLE* kmd, KMD_EVENT* event) {
   static uint8_t xs[128];
   if (kmd != NULL && event != NULL) {
-    if (event->pos_y == 0) {
-      sprintf(xs, "\r\x1b[%dC%s\r", event->pos_x * 2 + 1, BLANKS + strlen(BLANKS) - strlen(event->message));
-      B_PRINT(xs);
-    } else if (event->pos_y == 1) {
-      sprintf(xs, "\r\x1b[%dC%s\r", event->pos_x * 2 + 1, BLANKS + strlen(BLANKS) - strlen(event->message));
-      B_PRINT(xs);
-    } else if (event->pos_y == 2) {
-      sprintf(xs, "\n\r\x1b[%dC%s\x1b[1A\r", event->pos_x * 2 + 1, BLANKS + strlen(BLANKS) - strlen(event->message));
-      B_PRINT(xs);
+    if (kmd->large) {
+      put_text24(16 + event->pos_x * 24, 16 + kmd->cursor_pos_y * 16 + event->pos_y * 12, 3, BLANKS + strlen(BLANKS) - strlen(event->message));
+    } else {
+      if (event->pos_y == 0) {
+        sprintf(xs, "\r\x1b[%dC%s\r", event->pos_x * 2 + 1, BLANKS + strlen(BLANKS) - strlen(event->message));
+        B_PRINT(xs);
+      } else if (event->pos_y == 1) {
+        sprintf(xs, "\r\x1b[%dC%s\r", event->pos_x * 2 + 1, BLANKS + strlen(BLANKS) - strlen(event->message));
+        B_PRINT(xs);
+      } else if (event->pos_y == 2) {
+        sprintf(xs, "\n\r\x1b[%dC%s\x1b[1A\r", event->pos_x * 2 + 1, BLANKS + strlen(BLANKS) - strlen(event->message));
+        B_PRINT(xs);
+      }
     }
   }
 }
@@ -118,15 +163,19 @@ void kmd_erase_event_message(KMD_HANDLE* kmd, KMD_EVENT* event) {
 void kmd_print_event_message(KMD_HANDLE* kmd, KMD_EVENT* event) {
   static uint8_t xs[128];
   if (kmd != NULL && event != NULL) {
-    if (event->pos_y == 0) {
-      sprintf(xs, "\r\x1b[%dC%s\r", event->pos_x * 2 + 1, event->message);
-      B_PRINT(xs);
-    } else if (event->pos_y == 1) {
-      sprintf(xs, "\r\x1b[%dC%s\r", event->pos_x * 2 + 1, event->message);
-      B_PRINT(xs);
-    } else if (event->pos_y == 2) {
-      sprintf(xs, "\n\r\x1b[%dC%s\x1b[1A\r", event->pos_x * 2 + 1, event->message);
-      B_PRINT(xs);
+    if (kmd->large) {
+      put_text24(16 + event->pos_x * 24, 16 + kmd->cursor_pos_y * 16 + event->pos_y * 12, 3, event->message);
+    } else {
+      if (event->pos_y == 0) {
+        sprintf(xs, "\r\x1b[%dC%s\r", event->pos_x * 2 + 1, event->message);
+        B_PRINT(xs);
+      } else if (event->pos_y == 1) {
+        sprintf(xs, "\r\x1b[%dC%s\r", event->pos_x * 2 + 1, event->message);
+        B_PRINT(xs);
+      } else if (event->pos_y == 2) {
+        sprintf(xs, "\n\r\x1b[%dC%s\x1b[1A\r", event->pos_x * 2 + 1, event->message);
+        B_PRINT(xs);
+      }
     }
   }
 }
