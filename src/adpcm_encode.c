@@ -124,53 +124,184 @@ int32_t adpcm_encode_resample(ADPCM_ENCODE_HANDLE* adpcm, uint8_t* adpcm_buffer,
   size_t pcm_buffer_ofs = 0;
   size_t adpcm_buffer_ofs = 0;
 
-  while (pcm_buffer_ofs < pcm_buffer_len) {
+  if (adpcm->volume == 8) {
 
-    // down sampling
-    adpcm->resample_counter += adpcm_freq;
-    if (adpcm->resample_counter < pcm_freq) {
-      pcm_buffer_ofs += pcm_channels;
-      continue;
-    }
-    adpcm->resample_counter -= pcm_freq;
-
-    // get 12bit PCM mono data
-    int16_t xx = 0;
-    uint8_t* p = (uint8_t*)(&pcm_buffer[ pcm_buffer_ofs ]);
     if (pcm_channels == 2) {
-      // 16bit PCM LR to 12bit PCM mono
-      int16_t lch = little_endian ? p[0] + p[1] * 256 : pcm_buffer[ pcm_buffer_ofs ];
-      int16_t rch = little_endian ? p[2] + p[3] * 256 : pcm_buffer[ pcm_buffer_ofs + 1];
-      xx = (lch + rch) / 2 / 16;
-      pcm_buffer_ofs += 2;
+
+      while (pcm_buffer_ofs < pcm_buffer_len) {
+
+        // down sampling
+        adpcm->resample_counter += adpcm_freq;
+        if (adpcm->resample_counter < pcm_freq) {
+          pcm_buffer_ofs += pcm_channels;
+          continue;
+        }
+        adpcm->resample_counter -= pcm_freq;
+
+        // get 12bit PCM mono data
+        int16_t xx = 0;
+        uint8_t* p = (uint8_t*)(&pcm_buffer[ pcm_buffer_ofs ]);
+
+        // 16bit PCM LR to 12bit PCM mono
+        int16_t lch = little_endian ? p[0] + p[1] * 256 : pcm_buffer[ pcm_buffer_ofs ];
+        int16_t rch = little_endian ? p[2] + p[3] * 256 : pcm_buffer[ pcm_buffer_ofs + 1];
+        xx = (lch + rch) / 2 / 16;
+        pcm_buffer_ofs += 2;
+
+        // encode to 4bit ADPCM data
+        int16_t new_estimate;
+        uint8_t code = encode(xx, adpcm->last_estimate, &adpcm->step_index, &new_estimate);
+        adpcm->last_estimate = new_estimate;
+
+        if (adpcm_buffer_ofs >= 0xff00) {
+          printf("error: ADPCM encoding error - too long data for a chunk.\n");
+          return 0;
+        }
+
+        // fill a byte in this order: lower 4 bit -> upper 4 bit
+        if ((adpcm->num_samples % 2) == 0) {
+          adpcm_buffer[ adpcm_buffer_ofs ] = code;
+        } else {
+          adpcm_buffer[ adpcm_buffer_ofs ] |= code << 4;
+          adpcm_buffer_ofs++;
+        }
+        adpcm->num_samples++;
+
+      }
+
     } else {
-      // 16bit PCM mono to 12bit PCM mono
-      int16_t mch = little_endian ? p[0] + p[1] * 256 : pcm_buffer[ pcm_buffer_ofs ];
-      xx = mch / 16;
-      pcm_buffer_ofs += 1;
-    }
-    if (adpcm->volume != 8) {
-      xx = (int16_t)(xx * adpcm->volume / 8.0);
+
+      while (pcm_buffer_ofs < pcm_buffer_len) {
+
+        // down sampling
+        adpcm->resample_counter += adpcm_freq;
+        if (adpcm->resample_counter < pcm_freq) {
+          pcm_buffer_ofs += pcm_channels;
+          continue;
+        }
+        adpcm->resample_counter -= pcm_freq;
+
+        // get 12bit PCM mono data
+        int16_t xx = 0;
+        uint8_t* p = (uint8_t*)(&pcm_buffer[ pcm_buffer_ofs ]);
+
+        // 16bit PCM mono to 12bit PCM mono
+        int16_t mch = little_endian ? p[0] + p[1] * 256 : pcm_buffer[ pcm_buffer_ofs ];
+        xx = mch / 16;
+        pcm_buffer_ofs += 1;
+
+        // encode to 4bit ADPCM data
+        int16_t new_estimate;
+        uint8_t code = encode(xx, adpcm->last_estimate, &adpcm->step_index, &new_estimate);
+        adpcm->last_estimate = new_estimate;
+
+        if (adpcm_buffer_ofs >= 0xff00) {
+          printf("error: ADPCM encoding error - too long data for a chunk.\n");
+          return 0;
+        }
+
+        // fill a byte in this order: lower 4 bit -> upper 4 bit
+        if ((adpcm->num_samples % 2) == 0) {
+          adpcm_buffer[ adpcm_buffer_ofs ] = code;
+        } else {
+          adpcm_buffer[ adpcm_buffer_ofs ] |= code << 4;
+          adpcm_buffer_ofs++;
+        }
+        adpcm->num_samples++;
+
+      }
+
     }
 
-    // encode to 4bit ADPCM data
-    int16_t new_estimate;
-    uint8_t code = encode(xx, adpcm->last_estimate, &adpcm->step_index, &new_estimate);
-    adpcm->last_estimate = new_estimate;
+  } else {
 
-    if (adpcm_buffer_ofs >= 0xff00) {
-      printf("error: ADPCM encoding error - too long data for a chunk.\n");
-      return 0;
-    }
+    if (pcm_channels == 2) {
 
-    // fill a byte in this order: lower 4 bit -> upper 4 bit
-    if ((adpcm->num_samples % 2) == 0) {
-      adpcm_buffer[ adpcm_buffer_ofs ] = code;
+      while (pcm_buffer_ofs < pcm_buffer_len) {
+
+        // down sampling
+        adpcm->resample_counter += adpcm_freq;
+        if (adpcm->resample_counter < pcm_freq) {
+          pcm_buffer_ofs += pcm_channels;
+          continue;
+        }
+        adpcm->resample_counter -= pcm_freq;
+
+        // get 12bit PCM mono data
+        int16_t xx = 0;
+        uint8_t* p = (uint8_t*)(&pcm_buffer[ pcm_buffer_ofs ]);
+
+        // 16bit PCM LR to 12bit PCM mono
+        int16_t lch = little_endian ? p[0] + p[1] * 256 : pcm_buffer[ pcm_buffer_ofs ];
+        int16_t rch = little_endian ? p[2] + p[3] * 256 : pcm_buffer[ pcm_buffer_ofs + 1];
+        xx = (int16_t)((lch + rch) * adpcm->volume / ( 2 * 16 * 8 ));
+        pcm_buffer_ofs += 2;
+
+        // encode to 4bit ADPCM data
+        int16_t new_estimate;
+        uint8_t code = encode(xx, adpcm->last_estimate, &adpcm->step_index, &new_estimate);
+        adpcm->last_estimate = new_estimate;
+
+        if (adpcm_buffer_ofs >= 0xff00) {
+          printf("error: ADPCM encoding error - too long data for a chunk.\n");
+          return 0;
+        }
+
+        // fill a byte in this order: lower 4 bit -> upper 4 bit
+        if ((adpcm->num_samples % 2) == 0) {
+          adpcm_buffer[ adpcm_buffer_ofs ] = code;
+        } else {
+          adpcm_buffer[ adpcm_buffer_ofs ] |= code << 4;
+          adpcm_buffer_ofs++;
+        }
+        adpcm->num_samples++;
+
+      }
+
     } else {
-      adpcm_buffer[ adpcm_buffer_ofs ] |= code << 4;
-      adpcm_buffer_ofs++;
+
+      while (pcm_buffer_ofs < pcm_buffer_len) {
+
+        // down sampling
+        adpcm->resample_counter += adpcm_freq;
+        if (adpcm->resample_counter < pcm_freq) {
+          pcm_buffer_ofs += pcm_channels;
+          continue;
+        }
+        adpcm->resample_counter -= pcm_freq;
+
+        // get 12bit PCM mono data
+        int16_t xx = 0;
+        uint8_t* p = (uint8_t*)(&pcm_buffer[ pcm_buffer_ofs ]);
+
+        // 16bit PCM mono to 12bit PCM mono
+        int16_t mch = little_endian ? p[0] + p[1] * 256 : pcm_buffer[ pcm_buffer_ofs ];
+        xx = (int16_t)( mch * adpcm->volume / ( 16 * 8 ));
+        pcm_buffer_ofs += 1;
+
+        // encode to 4bit ADPCM data
+        int16_t new_estimate;
+        uint8_t code = encode(xx, adpcm->last_estimate, &adpcm->step_index, &new_estimate);
+        adpcm->last_estimate = new_estimate;
+
+        if (adpcm_buffer_ofs >= 0xff00) {
+          printf("error: ADPCM encoding error - too long data for a chunk.\n");
+          return 0;
+        }
+
+        // fill a byte in this order: lower 4 bit -> upper 4 bit
+        if ((adpcm->num_samples % 2) == 0) {
+          adpcm_buffer[ adpcm_buffer_ofs ] = code;
+        } else {
+          adpcm_buffer[ adpcm_buffer_ofs ] |= code << 4;
+          adpcm_buffer_ofs++;
+        }
+        adpcm->num_samples++;
+
+      }
+
     }
-    adpcm->num_samples++;
+
 
   }
 
