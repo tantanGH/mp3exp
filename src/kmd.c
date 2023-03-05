@@ -141,7 +141,7 @@ void kmd_erase_event_message(KMD_HANDLE* kmd, KMD_EVENT* event) {
   static uint8_t xs[128];
   if (kmd != NULL && event != NULL) {
     if (kmd->large) {
-      put_text24(16 + event->pos_x * 24, 16 + kmd->cursor_pos_y * 16 + event->pos_y * 12, 3, BLANKS + strlen(BLANKS) - strlen(event->message));
+      put_text24(16 + event->pos_x * 24, 16 + kmd->cursor_pos_y * 16 + event->pos_y * 16, 3, BLANKS + strlen(BLANKS) - strlen(event->message));
     } else {
       if (event->pos_y == 0) {
         sprintf(xs, "\r\x1b[%dC%s\r", event->pos_x * 2 + 1, BLANKS + strlen(BLANKS) - strlen(event->message));
@@ -164,7 +164,7 @@ void kmd_print_event_message(KMD_HANDLE* kmd, KMD_EVENT* event) {
   static uint8_t xs[128];
   if (kmd != NULL && event != NULL) {
     if (kmd->large) {
-      put_text24(16 + event->pos_x * 24, 16 + kmd->cursor_pos_y * 16 + event->pos_y * 12, 3, event->message);
+      put_text24(16 + event->pos_x * 24, 16 + kmd->cursor_pos_y * 16 + event->pos_y * 16, 3, event->message);
     } else {
       if (event->pos_y == 0) {
         sprintf(xs, "\r\x1b[%dC%s\r", event->pos_x * 2 + 1, event->message);

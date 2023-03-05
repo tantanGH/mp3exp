@@ -154,6 +154,11 @@ int32_t adpcm_encode_resample(ADPCM_ENCODE_HANDLE* adpcm, uint8_t* adpcm_buffer,
     uint8_t code = encode(xx, adpcm->last_estimate, &adpcm->step_index, &new_estimate);
     adpcm->last_estimate = new_estimate;
 
+    if (adpcm_buffer_ofs >= 0xff00) {
+      printf("error: ADPCM encoding error - too long data for a chunk.\n");
+      return 0;
+    }
+
     // fill a byte in this order: lower 4 bit -> upper 4 bit
     if ((adpcm->num_samples % 2) == 0) {
       adpcm_buffer[ adpcm_buffer_ofs ] = code;
@@ -166,7 +171,7 @@ int32_t adpcm_encode_resample(ADPCM_ENCODE_HANDLE* adpcm, uint8_t* adpcm_buffer,
   }
 
   if ((adpcm->num_samples % 2) != 0) {
-    printf("error: ADPCM encoding error - incomplete ADPCM output byte.\n");
+    printf("error: ADPCM encoding error - incomplete ADPCM output byte (pcm_len=%d,adpcm_samples=%d).\n",pcm_buffer_len,adpcm->num_samples);
     return 0;
   }
 

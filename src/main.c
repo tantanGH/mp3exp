@@ -312,9 +312,11 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
   }
 
   // PCM8A/PCM8PP is mandatory for MP3/WAV/ADPCM(YM2608)
-  if (input_format == FORMAT_MP3 || input_format == FORMAT_YM2608) {
+//  if (input_format == FORMAT_MP3 || input_format == FORMAT_YM2608) {
+  if (input_format == FORMAT_MP3) {
     if (pcm8_type != PCM8_TYPE_PCM8A && pcm8_type != PCM8_TYPE_PCM8PP) {
-      printf("error: PCM8A (>=1.02) or PCM8PP (>=0.83d) is required for MP3/ADPCM(YM2608) playback.\n");
+//      printf("error: PCM8A (>=1.02) or PCM8PP (>=0.83d) is required for MP3/ADPCM(YM2608) playback.\n");
+      printf("error: PCM8A (>=1.02) or PCM8PP (>=0.83d) is required for MP3 playback.\n");
       goto exit;    
     }
   }
@@ -500,7 +502,7 @@ try:
   //   pcm ... incremental (max 2 sec)
   size_t fread_buffer_len = 
     input_format == FORMAT_MP3 ? 2 + pcm_data_size / sizeof(int16_t) : 
-    input_format == FORMAT_YM2608 ? CHAIN_TABLE_BUFFER_BYTES / 4 :
+    input_format == FORMAT_YM2608 && (playback_driver == DRIVER_PCM8PP || playback_driver == DRIVER_PCM8A) ? CHAIN_TABLE_BUFFER_BYTES / 4 :
     pcm_freq * pcm_channels * 2;
   if (input_format != FORMAT_ADPCM) {   // ADPCM can be directly loaded to chain tables
     fread_buffer = himem_malloc(fread_buffer_len * sizeof(int16_t), input_format == FORMAT_MP3 ? use_high_memory : 0);
@@ -744,7 +746,7 @@ try:
         }
 
         // atop into decoder internal buffer
-        size_t decoded_bytes = ym2608_decode_exec(&ym2608_decoder, fread_buffer, fread_len);
+        size_t decoded_len = ym2608_decode_exec(&ym2608_decoder, fread_buffer, fread_len);
 
         // resample to chain table buffer
         size_t resampled_bytes = ym2608_decode_resample(&ym2608_decoder, chain_tables[i].buffer, adpcm_output_freq, 16) * sizeof(int16_t);
@@ -801,6 +803,23 @@ try:
         }
         size_t resampled_len = 
           adpcm_encode_resample(&adpcm_encoder, chain_tables[i].buffer, adpcm_output_freq, fread_buffer, fread_buffer_len, pcm_freq, pcm_channels, use_little_endian);
+        chain_tables[i].buffer_bytes = resampled_len;
+
+      } else if (input_format == FORMAT_YM2608) {
+
+        // ADPCM(YM2608) resampled
+        size_t fread_len = fread(fread_buffer, sizeof(uint8_t), fread_buffer_len, fp);  
+        if (fread_len < fread_buffer_len) {
+          chain_tables[i].next = NULL;
+          end_flag = 1;
+        }
+
+        // atop into decoder internal buffer
+        size_t decoded_len = ym2608_decode_exec(&ym2608_decoder, fread_buffer, fread_len);
+
+        // resample to chain table buffer
+        size_t resampled_len = 
+          adpcm_encode_resample(&adpcm_encoder, chain_tables[i].buffer, adpcm_output_freq, ym2608_decoder.decode_buffer, decoded_len, pcm_freq, pcm_channels, 0);
         chain_tables[i].buffer_bytes = resampled_len;
 
       } else if (input_format == FORMAT_WAV) {
@@ -1206,6 +1225,23 @@ try:
           }
           size_t resampled_len = 
             adpcm_encode_resample(&adpcm_encoder, cta->buffer, adpcm_output_freq, fread_buffer, fread_buffer_len, pcm_freq, pcm_channels, use_little_endian);
+          cta->buffer_bytes = resampled_len;
+
+        } else if (input_format == FORMAT_YM2608) {
+
+          // ADPCM(YM2608) resampled
+          size_t fread_len = fread(fread_buffer, sizeof(uint8_t), fread_buffer_len, fp);  
+          if (fread_len < fread_buffer_len) {
+            cta->next = NULL;
+            end_flag = 1;
+          }
+
+          // atop into decoder internal buffer
+          size_t decoded_len = ym2608_decode_exec(&ym2608_decoder, fread_buffer, fread_len);
+
+          // resample to chain table buffer
+          size_t resampled_len = 
+            adpcm_encode_resample(&adpcm_encoder, cta->buffer, adpcm_output_freq, ym2608_decoder.decode_buffer, decoded_len, pcm_freq, pcm_channels, 0);
           cta->buffer_bytes = resampled_len;
 
         } else if (input_format == FORMAT_WAV) {
