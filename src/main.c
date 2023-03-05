@@ -86,7 +86,7 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
   // parse command line options
   uint8_t* pcm_file_name = NULL;
   int16_t playback_driver = DRIVER_MP3EXP;
-  int16_t playback_volume = 0;
+  int16_t playback_volume = 7;
   int16_t loop_count = 1;
   int16_t mp3_quality = 1;
   int16_t mp3_pic_brightness = 0;
@@ -324,13 +324,10 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
   // playback driver selection
   if (pcm8_type == PCM8_TYPE_PCM8PP) {
     playback_driver = DRIVER_PCM8PP;
-    if (playback_volume == 0) playback_volume = 7;
   } else if (pcm8_type == PCM8_TYPE_PCM8A) {
     playback_driver = DRIVER_PCM8A;
-    if (playback_volume == 0) playback_volume = 7;
   } else {
     playback_driver = DRIVER_MP3EXP;
-    if (playback_volume == 0) playback_volume = 8;
   }
 
   // check kmd file existence
