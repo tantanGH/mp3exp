@@ -170,10 +170,10 @@ int32_t adpcm_encode_resample(ADPCM_ENCODE_HANDLE* adpcm, uint8_t* adpcm_buffer,
 
   }
 
-  if ((adpcm->num_samples % 2) != 0) {
-    printf("error: ADPCM encoding error - incomplete ADPCM output byte (pcm_len=%d,adpcm_samples=%d).\n",pcm_buffer_len,adpcm->num_samples);
-    return 0;
-  }
+//  if ((adpcm->num_samples % 2) != 0) {
+//    printf("error: ADPCM encoding error - incomplete ADPCM output byte (pcm_len=%d,adpcm_samples=%d).\n",pcm_buffer_len,adpcm->num_samples);
+//    return 0;
+//  }
 
   return adpcm_buffer_ofs;
 }
