@@ -91,6 +91,7 @@ void mp3_decode_close(MP3_DECODE_HANDLE* decode) {
   if (decode->mp3_album != NULL) {
     himem_free(decode->mp3_album, 0);
   }
+
 }
 
 //
@@ -284,7 +285,87 @@ int32_t mp3_decode_setup(MP3_DECODE_HANDLE* decode, void* mp3_data, size_t mp3_d
 }
 
 //
-//  decode MP3 stream with resampling
+//  decode MP3 stream (full for pcm8pp)
+//
+int32_t mp3_decode_full(MP3_DECODE_HANDLE* decode, int16_t* decode_buffer, size_t decode_buffer_bytes, size_t* decoded_bytes) {
+
+  // default return code
+  int32_t rc = -1;
+
+  // decode counter
+  int32_t decode_ofs = 0;
+
+  for (;;) {
+    
+    if (decode->current_mad_pcm == NULL) {
+
+      int16_t result = mad_frame_decode(&(decode->mad_frame), &(decode->mad_stream));
+      if (result == -1) {
+        if (decode->mad_stream.error == MAD_ERROR_BUFLEN) {
+          // MP3 EOF
+          break;
+        } else if (MAD_RECOVERABLE(decode->mad_stream.error)) {
+          continue;
+        } else {
+          printf("error: %s\n", mad_stream_errorstr(&(decode->mad_stream)));
+          goto exit;
+        }
+      }
+
+      decode->mad_frame.options = decode->mp3_frame_options;
+
+      mad_synth_frame(&(decode->mad_synth), &(decode->mad_frame));
+      mad_timer_add(&(decode->mad_timer), decode->mad_frame.header.duration);
+
+      decode->current_mad_pcm = &(decode->mad_synth.pcm);
+
+      if (decode->mp3_sample_rate < 0) {
+        decode->mp3_sample_rate = decode->current_mad_pcm->samplerate;
+        decode->mp3_channels = decode->current_mad_pcm->channels;
+      }
+
+    } 
+
+    MAD_PCM* pcm = decode->current_mad_pcm;
+    if (decode_ofs * sizeof(int16_t) + ( pcm->length * 2 * pcm->channels ) > decode_buffer_bytes) {
+      // no more buffer space to write
+      break;
+    }
+
+    if (pcm->channels == 2) {
+
+      for (int32_t i = 0; i < pcm->length; i++) {
+        // stereo data
+        decode_buffer[ decode_ofs++ ] = scale_16bit(pcm->samples[0][i]);
+        decode_buffer[ decode_ofs++ ] = scale_16bit(pcm->samples[1][i]);
+      }
+
+    } else {
+
+      for (int32_t i = 0; i < pcm->length; i++) {
+        // mono data
+        decode_buffer[ decode_ofs++ ] = scale_16bit(pcm->samples[0][i]);
+      }
+
+    }
+
+    decode->current_mad_pcm = NULL;
+
+  }
+
+  // success
+  rc = 0;
+
+exit:
+
+  // push resampled count
+  *decoded_bytes = decode_ofs * sizeof(int16_t);
+
+  return rc;
+}
+
+//
+//  decode MP3 stream with resampling for PCM8A
 //
 int32_t mp3_decode_resample(MP3_DECODE_HANDLE* decode, int16_t* resample_buffer, size_t resample_buffer_len, int16_t resample_freq, size_t* resampled_len) {
 
@@ -381,15 +462,15 @@ exit:
 }
 
 //
-//  decode MP3 stream (full for pcm8pp)
+//  decode MP3 stream with resampling, and encode
 //
-int32_t mp3_decode_full(MP3_DECODE_HANDLE* decode, int16_t* decode_buffer, size_t decode_buffer_bytes, size_t* decoded_bytes) {
+int32_t mp3_decode_resample_adpcm_encode(MP3_DECODE_HANDLE* decode, ADPCM_ENCODE_HANDLE* adpcm, uint8_t* adpcm_buffer, size_t adpcm_buffer_len, int16_t resample_freq, size_t* resampled_len) {
 
   // default return code
   int32_t rc = -1;
 
-  // decode counter
-  int32_t decode_ofs = 0;
+  // adpcm buffer offset
+  size_t adpcm_buffer_ofs = 0;
 
   for (;;) {
     
@@ -409,7 +490,6 @@ int32_t mp3_decode_full(MP3_DECODE_HANDLE* decode, int16_t* decode_buffer, size_
       }
 
       decode->mad_frame.options = decode->mp3_frame_options;
-
       mad_synth_frame(&(decode->mad_synth), &(decode->mad_frame));
       mad_timer_add(&(decode->mad_timer), decode->mad_frame.header.duration);
 
@@ -418,12 +498,14 @@ int32_t mp3_decode_full(MP3_DECODE_HANDLE* decode, int16_t* decode_buffer, size_
       if (decode->mp3_sample_rate < 0) {
         decode->mp3_sample_rate = decode->current_mad_pcm->samplerate;
         decode->mp3_channels = decode->current_mad_pcm->channels;
+//        printf("MP3 frequency : %d\n", decode->mp3_sample_rate);
+//        printf("MP3 channels  : %s\n", decode->mp3_channels == 1 ? "mono" : "stereo");
       }
 
     } 
 
     MAD_PCM* pcm = decode->current_mad_pcm;
-    if (decode_ofs * sizeof(int16_t) + ( pcm->length * 2 * pcm->channels ) > decode_buffer_bytes) {
+    if (adpcm_buffer_ofs + pcm->length/2 > adpcm_buffer_len) {
       // no more buffer space to write
       break;
     }
@@ -431,16 +513,69 @@ int32_t mp3_decode_full(MP3_DECODE_HANDLE* decode, int16_t* decode_buffer, size_
     if (pcm->channels == 2) {
 
       for (int32_t i = 0; i < pcm->length; i++) {
-        // stereo data
-        decode_buffer[ decode_ofs++ ] = scale_16bit(pcm->samples[0][i]);
-        decode_buffer[ decode_ofs++ ] = scale_16bit(pcm->samples[1][i]);
+
+        // down sampling
+        decode->resample_counter += resample_freq;
+        if (decode->resample_counter < pcm->samplerate) {
+          continue;
+        }
+        decode->resample_counter -= pcm->samplerate;
+
+        int16_t xx = ( scale_16bit(pcm->samples[0][i]) + scale_16bit(pcm->samples[1][i]) ) * adpcm->volume / ( 2 * 16 * 8 );
+
+        // encode to 4bit ADPCM data
+        int16_t new_estimate;
+        uint8_t code = msm6258v_encode(xx, adpcm->last_estimate, &adpcm->step_index, &new_estimate);
+        adpcm->last_estimate = new_estimate;
+
+        if (adpcm_buffer_ofs >= 0xff00) {
+          printf("error: ADPCM encoding error - too long data for a chunk.\n");
+          goto exit;
+        }
+
+        // fill a byte in this order: lower 4 bit -> upper 4 bit
+        if ((adpcm->num_samples % 2) == 0) {
+          adpcm_buffer[ adpcm_buffer_ofs ] = code;
+        } else {
+          adpcm_buffer[ adpcm_buffer_ofs ] |= code << 4;
+          adpcm_buffer_ofs++;
+        }
+        adpcm->num_samples++;
+
       }
 
     } else {
 
       for (int32_t i = 0; i < pcm->length; i++) {
-        // mono data
-        decode_buffer[ decode_ofs++ ] = scale_16bit(pcm->samples[0][i]);
+
+        // down sampling
+        decode->resample_counter += resample_freq;
+        if (decode->resample_counter < pcm->samplerate) {
+          continue;
+        }
+        decode->resample_counter -= pcm->samplerate;
+ 
+        int16_t xx = scale_16bit(pcm->samples[0][i]) * adpcm->volume / ( 16 * 8 );
+
+        // encode to 4bit ADPCM data
+        int16_t new_estimate;
+        uint8_t code = msm6258v_encode(xx, adpcm->last_estimate, &adpcm->step_index, &new_estimate);
+        adpcm->last_estimate = new_estimate;
+
+        if (adpcm_buffer_ofs >= 0xff00) {
+          printf("error: ADPCM encoding error - too long data for a chunk.\n");
+          goto exit;
+        }
+
+        // fill a byte in this order: lower 4 bit -> upper 4 bit
+        if ((adpcm->num_samples % 2) == 0) {
+          adpcm_buffer[ adpcm_buffer_ofs ] = code;
+        } else {
+          adpcm_buffer[ adpcm_buffer_ofs ] |= code << 4;
+          adpcm_buffer_ofs++;
+        }
+        adpcm->num_samples++;
+
       }
 
     }
@@ -455,7 +590,7 @@ int32_t mp3_decode_full(MP3_DECODE_HANDLE* decode, int16_t* decode_buffer, size_
 exit:
 
   // push resampled count
-  *decoded_bytes = decode_ofs * sizeof(int16_t);
+  *resampled_len = adpcm_buffer_ofs;
 
   return rc;
 }
