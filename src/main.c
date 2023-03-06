@@ -86,7 +86,7 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
   // parse command line options
   uint8_t* pcm_file_name = NULL;
   int16_t playback_driver = DRIVER_MP3EXP;
-  int16_t playback_volume = 0;
+  int16_t playback_volume = 7;
   int16_t loop_count = 1;
   int16_t mp3_quality = 1;
   int16_t mp3_pic_brightness = 0;
@@ -137,17 +137,15 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
         mp3_cache_unuse = 1;
       } else if (argv[i][1] == 'z') {
         use_little_endian = 1;
-//      } else if (argv[i][1] == 'o') {
-//        int16_t out_freq = atoi(argv[i]+2);
-//        if (out_freq == 2) {
-//          adpcm_output_freq = 7812;
-//        } else if (out_freq == 1) {
-//          adpcm_output_freq = 10417;
-//        } else {
-//          adpcm_output_freq = 15625;
-//        }
-//      } else if (argv[i][1] == 'a') {
-//        encode_with_self = 1;
+      } else if (argv[i][1] == 'o') {
+        int16_t out_freq = atoi(argv[i]+2);
+        if (out_freq == 2) {
+          adpcm_output_freq = 7812;
+        } else if (out_freq == 1) {
+          adpcm_output_freq = 10417;
+        } else {
+          adpcm_output_freq = 15625;
+        }
       } else if (argv[i][1] == 'h') {
         show_help_message();
         goto exit;
@@ -322,13 +320,10 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
   // playback driver selection
   if (pcm8_type == PCM8_TYPE_PCM8PP) {
     playback_driver = DRIVER_PCM8PP;
-    if (playback_volume == 0) playback_volume = 7;
   } else if (pcm8_type == PCM8_TYPE_PCM8A) {
     playback_driver = DRIVER_PCM8A;
-    if (playback_volume == 0) playback_volume = 7;
   } else {
     playback_driver = DRIVER_MP3EXP;
-    if (playback_volume == 0) playback_volume = 8;
   }
 
   // cursor off
@@ -814,7 +809,7 @@ try:
           end_flag = 1;
         }
         size_t resampled_len = 
-          adpcm_encode_resample(&adpcm_encoder, chain_tables[i].buffer, adpcm_output_freq, fread_buffer, fread_buffer_len, pcm_freq, pcm_channels, use_little_endian);
+          adpcm_encode_resample(&adpcm_encoder, chain_tables[i].buffer, adpcm_output_freq, fread_buffer, fread_len, pcm_freq, pcm_channels, use_little_endian);
         chain_tables[i].buffer_bytes = resampled_len;
 
       } else if (input_format == FORMAT_YM2608) {
@@ -843,7 +838,7 @@ try:
           end_flag = 1;
         }
         size_t resampled_len = 
-          adpcm_encode_resample(&adpcm_encoder, chain_tables[i].buffer, adpcm_output_freq, fread_buffer, fread_buffer_len, pcm_freq, pcm_channels, 1);
+          adpcm_encode_resample(&adpcm_encoder, chain_tables[i].buffer, adpcm_output_freq, fread_buffer, fread_len, pcm_freq, pcm_channels, 1);
         chain_tables[i].buffer_bytes = resampled_len;
 
       } else if (input_format == FORMAT_MP3) {
