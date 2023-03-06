@@ -60,7 +60,7 @@ function do_compile() {
 
 function build_mp3exp() {
 #  do_compile . "crtc himem nanojpeg png_buffer png pcm8 pcm8a pcm8pp adpcm_encode raw_decode ym2608_decode wav_decode mp3_decode kmd main" "utf16_cp932 ym2608_adpcmlib"
-  do_compile . "adpcm_encode raw_decode ym2608_decode wav_decode mp3_decode kmd main" ""
+  do_compile . "png adpcm_encode raw_decode ym2608_decode wav_decode mp3_decode kmd main" ""
 
   if [ $? != 0 ]; then
     return $?

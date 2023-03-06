@@ -346,7 +346,14 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
     g_funckey_mode = C_FNKMOD(-1);
     C_FNKMOD(3);
     C_CLS_AL();
-    if (mp3_pic_brightness == 0) G_CLR_ON();
+    if (mp3_pic_brightness > 0) {
+      SCROLL(0, 512-128, 0);
+      SCROLL(1, 512-128, 0);
+      SCROLL(2, 512-128, 0);
+      SCROLL(3, 512-128, 0);
+    } else {
+      G_CLR_ON();
+    }
   }
 
   // reset PCM8 / PCM8A / PCM8PP / IOCS ADPCM
@@ -1412,7 +1419,15 @@ exit:
   while (B_KEYSNS() != 0) {
     B_KEYINP();
   }
- 
+
+  // reset scroll position
+  if (mp3_pic_brightness > 0 && full_screen) {
+    SCROLL(0, 0, 0);
+    SCROLL(1, 0, 0);
+    SCROLL(2, 0, 0);
+    SCROLL(3, 0, 0);
+  }
+
   // cursor on
   C_CURON();
 
