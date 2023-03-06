@@ -841,21 +841,25 @@ NJ_INLINE void njConvert(void) {
             pcr += nj.comp[2].stride;
           }
         } else {
-          uint16_t ofs_x = (nj.width  > 512) ? 0 : (512 - nj.width ) / 2;
-          uint16_t ofs_y = (nj.height > 512) ? 0 : (512 - nj.height) / 2;
+          //uint16_t ofs_x = (nj.width  > 512) ? 0 : (512 - nj.width ) / 2;
+          //uint16_t ofs_y = (nj.height > 512) ? 0 : (512 - nj.height) / 2;
+          int16_t ofs_x = (512 - nj.width ) / 2;
+          int16_t ofs_y = (512 - nj.height) / 2;
           for (yy = nj.height;  yy;  --yy) {
-            if ((ofs_y + (nj.height - yy)) > 511) continue;
-            uint16_t* gvram = &(GVRAM[ ( ofs_y + (nj.height - yy)) * 512 + ofs_x ]);
-            for (x = 0; x < nj.width;  ++x) {
-              if ((ofs_x + x) > 511) continue;
-              register int y = py[x] << 8;
-              register int cb = pcb[x] - 128;
-              register int cr = pcr[x] - 128;
-              int16_t r = njClip((y            + 359 * cr + 128) >> 8);
-              int16_t g = njClip((y -  88 * cb - 183 * cr + 128) >> 8);
-              int16_t b = njClip((y + 454 * cb            + 128) >> 8);
-              uint16_t rgb555 = rgb555_g[ g ] | rgb555_r[ r ] | rgb555_b[ b ];
-              gvram[x] = rgb555;
+            int16_t yyy = ofs_y + (nj.height - yy);
+            if (yyy >= 0 && yyy <= 511) {
+              uint16_t* gvram = &(GVRAM[ yyy * 512 + ofs_x ]);
+              for (x = 0; x < nj.width;  ++x) {
+                if ((ofs_x + x) < 0 || (ofs_x + x) > 511) continue;
+                register int y = py[x] << 8;
+                register int cb = pcb[x] - 128;
+                register int cr = pcr[x] - 128;
+                int16_t r = njClip((y            + 359 * cr + 128) >> 8);
+                int16_t g = njClip((y -  88 * cb - 183 * cr + 128) >> 8);
+                int16_t b = njClip((y + 454 * cb            + 128) >> 8);
+                uint16_t rgb555 = rgb555_g[ g ] | rgb555_r[ r ] | rgb555_b[ b ];
+                gvram[x] = rgb555;
+              }
             }
             py += nj.comp[0].stride;
             pcb += nj.comp[1].stride;
