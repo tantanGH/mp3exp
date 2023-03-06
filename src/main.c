@@ -86,7 +86,7 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
   // parse command line options
   uint8_t* pcm_file_name = NULL;
   int16_t playback_driver = DRIVER_MP3EXP;
-  int16_t playback_volume = 0;
+  int16_t playback_volume = 7;
   int16_t loop_count = 1;
   int16_t mp3_quality = 1;
   int16_t mp3_pic_brightness = 0;
@@ -137,17 +137,15 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
         mp3_cache_unuse = 1;
       } else if (argv[i][1] == 'z') {
         use_little_endian = 1;
-//      } else if (argv[i][1] == 'o') {
-//        int16_t out_freq = atoi(argv[i]+2);
-//        if (out_freq == 2) {
-//          adpcm_output_freq = 7812;
-//        } else if (out_freq == 1) {
-//          adpcm_output_freq = 10417;
-//        } else {
-//          adpcm_output_freq = 15625;
-//        }
-//      } else if (argv[i][1] == 'a') {
-//        encode_with_self = 1;
+      } else if (argv[i][1] == 'o') {
+        int16_t out_freq = atoi(argv[i]+2);
+        if (out_freq == 2) {
+          adpcm_output_freq = 7812;
+        } else if (out_freq == 1) {
+          adpcm_output_freq = 10417;
+        } else {
+          adpcm_output_freq = 15625;
+        }
       } else if (argv[i][1] == 'h') {
         show_help_message();
         goto exit;
@@ -312,23 +310,20 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
   }
 
   // PCM8A/PCM8PP is mandatory for MP3
-  if (input_format == FORMAT_MP3) {
-    if (pcm8_type != PCM8_TYPE_PCM8A && pcm8_type != PCM8_TYPE_PCM8PP) {
-      printf("error: PCM8A (>=1.02) or PCM8PP (>=0.83d) is required for MP3 playback.\n");
-      goto exit;    
-    }
-  }
+//  if (input_format == FORMAT_MP3) {
+//    if (pcm8_type != PCM8_TYPE_PCM8A && pcm8_type != PCM8_TYPE_PCM8PP) {
+//      printf("error: PCM8A (>=1.02) or PCM8PP (>=0.83d) is required for MP3 playback.\n");
+//      goto exit;    
+//    }
+//  }
 
   // playback driver selection
   if (pcm8_type == PCM8_TYPE_PCM8PP) {
     playback_driver = DRIVER_PCM8PP;
-    if (playback_volume == 0) playback_volume = 7;
   } else if (pcm8_type == PCM8_TYPE_PCM8A) {
     playback_driver = DRIVER_PCM8A;
-    if (playback_volume == 0) playback_volume = 7;
   } else {
     playback_driver = DRIVER_MP3EXP;
-    if (playback_volume == 0) playback_volume = 8;
   }
 
   // cursor off
@@ -351,7 +346,14 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
     g_funckey_mode = C_FNKMOD(-1);
     C_FNKMOD(3);
     C_CLS_AL();
-    if (mp3_pic_brightness == 0) G_CLR_ON();
+    if (mp3_pic_brightness > 0) {
+      SCROLL(0, 512-128, 0);
+      SCROLL(1, 512-128, 0);
+      SCROLL(2, 512-128, 0);
+      SCROLL(3, 512-128, 0);
+    } else {
+      G_CLR_ON();
+    }
   }
 
   // reset PCM8 / PCM8A / PCM8PP / IOCS ADPCM
@@ -390,7 +392,11 @@ try:
   }
 
   // init chain tables
-  static CHAIN_TABLE chain_tables[ MAX_CHAINS ];
+  CHAIN_TABLE* chain_tables = (CHAIN_TABLE*)himem_malloc(sizeof(CHAIN_TABLE) * MAX_CHAINS, 0);
+  if (chain_tables == NULL) {
+    printf("error: out of memory. (cannot allocate chain tables in main memory)\n");
+    goto catch;
+  }
   for (int16_t i = 0; i < num_chains; i++) {
     chain_tables[i].buffer = NULL;
     chain_tables[i].buffer_bytes = 0;
@@ -398,6 +404,10 @@ try:
   }
   for (int16_t i = 0; i < num_chains; i++) {
     chain_tables[i].buffer = himem_malloc(CHAIN_TABLE_BUFFER_BYTES, 0);
+    if (chain_tables[i].buffer == NULL) {
+      printf("error: out of memory. (cannot allocate chain table buffer in main memory)\n");
+      goto catch;      
+    }
   }
 
   // encoder
@@ -806,7 +816,7 @@ try:
           end_flag = 1;
         }
         size_t resampled_len = 
-          adpcm_encode_resample(&adpcm_encoder, chain_tables[i].buffer, adpcm_output_freq, fread_buffer, fread_buffer_len, pcm_freq, pcm_channels, use_little_endian);
+          adpcm_encode_resample(&adpcm_encoder, chain_tables[i].buffer, adpcm_output_freq, fread_buffer, fread_len, pcm_freq, pcm_channels, use_little_endian);
         chain_tables[i].buffer_bytes = resampled_len;
 
       } else if (input_format == FORMAT_YM2608) {
@@ -835,7 +845,7 @@ try:
           end_flag = 1;
         }
         size_t resampled_len = 
-          adpcm_encode_resample(&adpcm_encoder, chain_tables[i].buffer, adpcm_output_freq, fread_buffer, fread_buffer_len, pcm_freq, pcm_channels, 1);
+          adpcm_encode_resample(&adpcm_encoder, chain_tables[i].buffer, adpcm_output_freq, fread_buffer, fread_len, pcm_freq, pcm_channels, 1);
         chain_tables[i].buffer_bytes = resampled_len;
 
       } else if (input_format == FORMAT_MP3) {
@@ -1388,6 +1398,7 @@ catch:
       himem_free(chain_tables[i].buffer, 0);
     }
   }
+  himem_free(chain_tables, 0);
 
   // close kmd handle
   if (use_kmd) {
@@ -1408,7 +1419,15 @@ exit:
   while (B_KEYSNS() != 0) {
     B_KEYINP();
   }
- 
+
+  // reset scroll position
+  if (mp3_pic_brightness > 0 && full_screen) {
+    SCROLL(0, 0, 0);
+    SCROLL(1, 0, 0);
+    SCROLL(2, 0, 0);
+    SCROLL(3, 0, 0);
+  }
+
   // cursor on
   C_CURON();
 

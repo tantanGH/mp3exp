@@ -327,7 +327,8 @@ static int32_t inflate_data(uint8_t* input_data, size_t input_data_bytes, BUFFER
     if (z_status == Z_OK) {
 
       // input buffer consumed
-//      int32_t in_consumed_size = avail_in_cur - zisp->avail_in;
+      int32_t in_consumed_size = avail_in_cur - zisp->avail_in;
+      input_data_ofs += in_consumed_size;
 //      input_buffer->rofs += in_consumed_size;
 //      if (input_buffer->rofs >= input_buffer->buffer_size) {
 //#ifdef DEBUG        

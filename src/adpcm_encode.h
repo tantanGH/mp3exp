@@ -13,7 +13,6 @@ typedef struct {
   int16_t volume;
 } ADPCM_ENCODE_HANDLE;
 
-int16_t msm6258v_decode(uint8_t code, int16_t* step_index, int16_t last_data);
 uint8_t msm6258v_encode(int16_t current_data, int16_t last_estimate, int16_t* step_index, int16_t* new_estimate);
 
 int32_t adpcm_encode_init(ADPCM_ENCODE_HANDLE* adpcm, int16_t volume);

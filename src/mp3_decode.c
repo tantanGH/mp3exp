@@ -226,11 +226,20 @@ int32_t mp3_decode_parse_tags(MP3_DECODE_HANDLE* decode, int16_t pic_brightness,
       uint8_t* pic_data = desc + strlen(desc) + 1;
       uint32_t pic_data_len = frame_size - (pic_data - frame_data);
 
+//      printf("found APIC. mime=%s\n",mime);
+
       if (pic_data[0] == 0xff && pic_data[1] == 0xd8) {
         // jpeg
+//        printf("found jpeg apic.\n");
         njInit(pic_brightness);
-        if (njDecode(pic_data, pic_data_len, pic_half_size) == NJ_OK) {
+        int32_t rc = njDecode(pic_data, pic_data_len, pic_half_size);
+        if (rc == NJ_OK) {
           njDone();
+        } else {
+//          printf("NJ failure. (%d)\n",rc);
+          if (rc == NJ_UNSUPPORTED) {
+            printf("unsupported jpeg artwork format. (pregressive JPEG?)\n");
+          }
         }
       } else if (pic_data[0] == 0x89 && pic_data[1] == 0x50) {
         // png
@@ -474,6 +483,7 @@ int32_t mp3_decode_resample_adpcm_encode(MP3_DECODE_HANDLE* decode, ADPCM_ENCODE
 
   for (;;) {
     
+    // if we do not have any pending pcm data, decode a new MP3 frame
     if (decode->current_mad_pcm == NULL) {
 
       int16_t result = mad_frame_decode(&(decode->mad_frame), &(decode->mad_stream));
@@ -505,7 +515,7 @@ int32_t mp3_decode_resample_adpcm_encode(MP3_DECODE_HANDLE* decode, ADPCM_ENCODE
     } 
 
     MAD_PCM* pcm = decode->current_mad_pcm;
-    if (adpcm_buffer_ofs + pcm->length/2 > adpcm_buffer_len) {
+    if (adpcm_buffer_ofs + pcm->length > adpcm_buffer_len) {
       // no more buffer space to write
       break;
     }
@@ -515,11 +525,11 @@ int32_t mp3_decode_resample_adpcm_encode(MP3_DECODE_HANDLE* decode, ADPCM_ENCODE
       for (int32_t i = 0; i < pcm->length; i++) {
 
         // down sampling
-        decode->resample_counter += resample_freq;
-        if (decode->resample_counter < pcm->samplerate) {
+        adpcm->resample_counter += resample_freq;
+        if (adpcm->resample_counter < pcm->samplerate) {
           continue;
         }
-        decode->resample_counter -= pcm->samplerate;
+        adpcm->resample_counter -= pcm->samplerate;
 
         int16_t xx = ( scale_16bit(pcm->samples[0][i]) + scale_16bit(pcm->samples[1][i]) ) * adpcm->volume / ( 2 * 16 * 8 );
 
@@ -527,11 +537,6 @@ int32_t mp3_decode_resample_adpcm_encode(MP3_DECODE_HANDLE* decode, ADPCM_ENCODE
         int16_t new_estimate;
         uint8_t code = msm6258v_encode(xx, adpcm->last_estimate, &adpcm->step_index, &new_estimate);
         adpcm->last_estimate = new_estimate;
-
-        if (adpcm_buffer_ofs >= 0xff00) {
-          printf("error: ADPCM encoding error - too long data for a chunk.\n");
-          goto exit;
-        }
 
         // fill a byte in this order: lower 4 bit -> upper 4 bit
         if ((adpcm->num_samples % 2) == 0) {
@@ -561,11 +566,6 @@ int32_t mp3_decode_resample_adpcm_encode(MP3_DECODE_HANDLE* decode, ADPCM_ENCODE
         int16_t new_estimate;
         uint8_t code = msm6258v_encode(xx, adpcm->last_estimate, &adpcm->step_index, &new_estimate);
         adpcm->last_estimate = new_estimate;
-
-        if (adpcm_buffer_ofs >= 0xff00) {
-          printf("error: ADPCM encoding error - too long data for a chunk.\n");
-          goto exit;
-        }
 
         // fill a byte in this order: lower 4 bit -> upper 4 bit
         if ((adpcm->num_samples % 2) == 0) {
