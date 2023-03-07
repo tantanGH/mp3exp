@@ -346,14 +346,27 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
     g_funckey_mode = C_FNKMOD(-1);
     C_FNKMOD(3);
     C_CLS_AL();
-    if (mp3_pic_brightness > 0) {
-      SCROLL(0, 512-128, 0);
-      SCROLL(1, 512-128, 0);
-      SCROLL(2, 512-128, 0);
-      SCROLL(3, 512-128, 0);
-    } else {
+    if (mp3_pic_brightness == 0) {
       G_CLR_ON();
     }
+  }
+
+  // for text plane 2 masking
+  if (mp3_pic_brightness > 0) {
+    SCROLL(0, 512-128, 0);
+    SCROLL(1, 512-128, 0);
+    SCROLL(2, 512-128, 0);
+    SCROLL(3, 512-128, 0);
+    TPALET2(4, 0x0001);
+    TPALET2(5, TPALET2(1,-1));
+    TPALET2(6, TPALET2(2,-1));
+    TPALET2(7, TPALET2(3,-1));
+    struct TXFILLPTR txfil = { 2, 0, 0, 128, 512, 0xffff };
+    TXFILL(&txfil);
+    struct TXFILLPTR txfil2 = { 2, 768-128, 0, 128, 512, 0xffff };
+    TXFILL(&txfil2);
+    struct TXFILLPTR txfil3 = { 2, 128, 0, 512, 512, 0x0000 };
+    TXFILL(&txfil3);
   }
 
   // reset PCM8 / PCM8A / PCM8PP / IOCS ADPCM
@@ -1421,11 +1434,17 @@ exit:
   }
 
   // reset scroll position
-  if (mp3_pic_brightness > 0 && full_screen) {
+  if (mp3_pic_brightness > 0) {
     SCROLL(0, 0, 0);
     SCROLL(1, 0, 0);
     SCROLL(2, 0, 0);
     SCROLL(3, 0, 0);
+    struct TXFILLPTR txfil = { 2, 0, 0, 768, 512, 0x0000 };
+    TXFILL(&txfil);
+    TPALET2(4,-2);
+    TPALET2(5,-2);
+    TPALET2(6,-2);
+    TPALET2(7,-2);
   }
 
   // cursor on
