@@ -201,7 +201,7 @@ Pythonなしで Human68k 上で直接実行できる.X形式の [KMDGEN.X](https
 
 `total-seconds` ... 曲のトータル時間を秒単位で指定します。
 
-`bpm` ... 対象となる曲のBPM(1分間に何拍打つか)を指定します。BPMを知るには、
+`bpm` ... 対象となる曲のBPM(1分間に何拍打つか)を指定します。小数点をつけても大丈夫です。BPMを知るには、
 
 - [BPMCHK.X](https://github.com/tantanGH/bpmchk) や [aubio](https://aubio.org/)などのツールを使って調べる
 - メトロノームアプリやYoutubeのBPM動画などを合わせて再生して自分で調べる
