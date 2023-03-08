@@ -70,7 +70,7 @@ static void show_help_message() {
 //  printf("\n");
 //  printf("     -c    ... do not use .s44/.a44/.wav as mp3 playback cache\n");
 //  printf("     -a    ... use MP3EXP for ADPCM encoding\n");
-  printf("     -z    ... use little endian for .s44/.m44\n");
+//  printf("     -z    ... use little endian for .s44/.m44\n");
   printf("     -h    ... show help message\n");
 }
 
@@ -351,22 +351,14 @@ int32_t main(int32_t argc, uint8_t* argv[]) {
     }
   }
 
-  // for text plane 2 masking
+  // for text plane 2 masking (for XM6g bug woraround, we cannot scroll position before updating)
   if (mp3_pic_brightness > 0) {
-    SCROLL(0, 512-128, 0);
-    SCROLL(1, 512-128, 0);
-    SCROLL(2, 512-128, 0);
-    SCROLL(3, 512-128, 0);
     TPALET2(4, 0x0001);
     TPALET2(5, TPALET2(1,-1));
     TPALET2(6, TPALET2(2,-1));
     TPALET2(7, TPALET2(3,-1));
-    struct TXFILLPTR txfil = { 2, 0, 0, 128, 512, 0xffff };
+    struct TXFILLPTR txfil = { 2, 0, 0, 768, 512, 0xffff };
     TXFILL(&txfil);
-    struct TXFILLPTR txfil2 = { 2, 768-128, 0, 128, 512, 0xffff };
-    TXFILL(&txfil2);
-    struct TXFILLPTR txfil3 = { 2, 128, 0, 512, 512, 0x0000 };
-    TXFILL(&txfil3);
   }
 
   // reset PCM8 / PCM8A / PCM8PP / IOCS ADPCM
@@ -488,6 +480,14 @@ try:
     }
     skip_offset = ofs;
     printf("\r\x1b[0K");
+    if (mp3_pic_brightness > 0) {
+      SCROLL(0, 512-128, 0);
+      SCROLL(1, 512-128, 0);
+      SCROLL(2, 512-128, 0);
+      SCROLL(3, 512-128, 0);
+      struct TXFILLPTR txfil = { 2, 128, 0, 512, 512, 0x0000 };
+      TXFILL(&txfil);
+    }
   }
 
   // in case mp3 cache mode, reopen the file
@@ -582,6 +582,11 @@ try:
       printf("PCM frequency : %d [Hz]\n", pcm_freq);
       printf("PCM channels  : %s\n", "mono");
       printf("PCM length    : %4.2f [sec]\n", (float)pcm_data_size / pcm_1sec_size);
+      if (use_kmd) {
+        if (kmd.tag_title[0]  != '\0') printf("KMD title     : %s\n", kmd.tag_title);
+        if (kmd.tag_artist[0] != '\0') printf("KMD artist    : %s\n", kmd.tag_artist);
+        if (kmd.tag_album[0]  != '\0') printf("KMD album     : %s\n", kmd.tag_album);
+      }
     }
 
     if (!use_mp3_cache && input_format == FORMAT_RAW) {
@@ -589,6 +594,11 @@ try:
       printf("PCM frequency : %d [Hz]\n", pcm_freq);
       printf("PCM channels  : %s\n", pcm_channels == 1 ? "mono" : "stereo");
       printf("PCM length    : %4.2f [sec]\n", (float)pcm_data_size / pcm_channels / pcm_1sec_size);
+      if (use_kmd) {
+        if (kmd.tag_title[0]  != '\0') printf("KMD title     : %s\n", kmd.tag_title);
+        if (kmd.tag_artist[0] != '\0') printf("KMD artist    : %s\n", kmd.tag_artist);
+        if (kmd.tag_album[0]  != '\0') printf("KMD album     : %s\n", kmd.tag_album);
+      }
     }
 
     if (!use_mp3_cache && input_format == FORMAT_YM2608) {
@@ -596,12 +606,22 @@ try:
       printf("PCM frequency : %d [Hz]\n", pcm_freq);
       printf("PCM channels  : %s\n", pcm_channels == 1 ? "mono" : "stereo");
       printf("PCM length    : %4.2f [sec]\n", (float)pcm_data_size / pcm_channels / pcm_1sec_size);
+      if (use_kmd) {
+        if (kmd.tag_title[0]  != '\0') printf("KMD title     : %s\n", kmd.tag_title);
+        if (kmd.tag_artist[0] != '\0') printf("KMD artist    : %s\n", kmd.tag_artist);
+        if (kmd.tag_album[0]  != '\0') printf("KMD album     : %s\n", kmd.tag_album);
+      }
     }
 
     if (!use_mp3_cache && input_format == FORMAT_WAV) {
       printf("PCM frequency : %d [Hz]\n", pcm_freq);
       printf("PCM channels  : %s\n", pcm_channels == 1 ? "mono" : "stereo");
       printf("PCM length    : %4.2f [sec]\n", (float)wav_decoder.duration / pcm_freq);
+      if (use_kmd) {
+        if (kmd.tag_title[0]  != '\0') printf("KMD title     : %s\n", kmd.tag_title);
+        if (kmd.tag_artist[0] != '\0') printf("KMD artist    : %s\n", kmd.tag_artist);
+        if (kmd.tag_album[0]  != '\0') printf("KMD album     : %s\n", kmd.tag_album);
+      }
     }
 
     // describe playback drivers
