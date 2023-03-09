@@ -13,7 +13,7 @@ MP3のアルバムアート表示(ベースラインJPEG及びPNG)に対応し�
 
 KMD歌詞ファイルの簡易表示に対応しています。
 
-<img src='images/mp3exp6.png' width='800'/>
+<img src='images/mp3exp20.png' width='800'/>
 
 出力デバイスはX68k内蔵ADPCMまたはMercury-Unit(V3.5以上)になります。組み込むPCM8ドライバによって決まります。
 
@@ -68,6 +68,8 @@ XM6 typeG
     mp3exp -u -q1 -t75 hogehoge.mp3
 
 ホスト機に余裕があるならば -q1 ではなく -q0 かつ PCM8PP.X -c1 -s2 で。
+
+<img src='images/mp3exp22.png' width='800'/>
 
 ---
 
