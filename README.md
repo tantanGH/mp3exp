@@ -142,8 +142,6 @@ MP3 -> S44/A44 については コンバータ[MP3EX.X](https://github.com/tanta
 
          -b<n> ... buffer size [x 64KB] (2-96,default:4)
          -u    ... use 060turbo/TS-6BE16 high memory for buffering
-
-         -z    ... use little endian for .s44/.m44
          -h    ... show help message
 
 
