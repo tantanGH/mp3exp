@@ -176,7 +176,7 @@ MP3 -> S44/A44 については コンバータ[MP3EX.X](https://github.com/tanta
 
 ### KMD歌詞ファイル再生
 
-Mercury-Unit デファクトスタンダードの録音再生ツール、Yas氏のSMR.XのKMD歌詞データファイルの簡易表示に対応しています。オリジナルのように24x24フォントではなく、通常の16x16フォント2段で表示します。PCM/S44/A44だけでなくMP3でも利用できます。
+Mercury-Unit デファクトスタンダードの録音再生ツール、Yas氏のSMR.XのKMD歌詞データファイルの簡易表示に対応しています。PCM/S44/A44だけでなくWAVやMP3でも利用できます。-xオプション利用時は24x24ドットフォントで、-xの指定が無い場合は16x16ドットフォントでの簡易表示になります。
 
 <img src='images/mp3exp9.png' width='800'/>
 
@@ -184,52 +184,9 @@ Mercury-Unit デファクトスタンダードの録音再生ツール、Yas氏�
 
 ---
 
-### KMD歌詞ファイルテンプレート作成ツール
+### KMD歌詞ファイル作成
 
-ソースツリーの `python/` フォルダの中にある `kmdgen.py` は [MicroPython for X680x0](https://github.com/yunkya2/micropython-x68k) を含めたPython環境上で動作するKMDファイルテンプレート(タイムテーブル)自動作成ツールです。以下のように7つのコマンドラインパラメータを渡して利用します。
-
-    micropython kmdgen.py <total-seconds> <bpm> <beat-interval> <beat-skip> <event-offset> <erase-offset> <out-file>
-
-または
-
-    python3 kmdgen.py <total-seconds> <bpm> <beat-interval> <beat-skip> <event-offset> <erase-offset> <out-file>
-
-などとして実行します。
-
-Pythonなしで Human68k 上で直接実行できる.X形式の [KMDGEN.X](https://github.com/tantanGH/kmdgen)も用意しています。
-
-
-`total-seconds` ... 曲のトータル時間を秒単位で指定します。
-
-`bpm` ... 対象となる曲のBPM(1分間に何拍打つか)を指定します。BPMを知るには、
-
-- [BPMCHK.X](https://github.com/tantanGH/bpmchk) や [aubio](https://aubio.org/)などのツールを使って調べる
-- メトロノームアプリやYoutubeのBPM動画などを合わせて再生して自分で調べる
-- スマホアプリやWebの無料サービスなどを使って調べる。 
-
-などの方法があります。自分は macOSで aubio を使っています。
-BPMCHK.X は aubio ライブラリをS44対応改造し、x68k向けにコンパイルしてBPM算出に特化したツールです。
-
-いくつかテンプレートをBPMをずらして作ってみて再生し、しっくりくるものをベースに編集に入るのも良いと思います。
-出力されたテンプレートはダミーメッセージが入っていますがそのまますぐに SMR.X / MP3EXP.X で再生可能です。
-
-`beat-interval` ... 何拍ごとにKMDのイベント行を出力するかの指定。イベントは y0 → y2 → y0 → y2 → ... のように、y位置が交互に繰り返す形で出力されます。y1 の出力はされません。
-
-`beat-skip` ... 歌詞表示イベント行の出力を曲の出だしの何拍分スキップするかの指定。イントロ部分を飛ばしたいときなど。
-
-`event-offset` ... 歌詞表示は通常拍ぴったりではなく、やや前にすることが多いです。拍の何tick前にstを設定するかのオフセット指定です。1tickは10msec(KMDの最小時間単位)です。
-
-`erase-offset` ... 歌詞表示を消すタイミング(et)は、次のy0イベントのstの1tick前がデフォルトになります。このオフセットを指定するとさらにそれよりも指定したtick分だけ前にetを設定します。
-
-`out-file` ... 出力先のKMDファイル名です。既にファイルが存在する場合は上書きするかの確認を求められます。
-
-実行例：
-
-    micropython kmdgen.py 180 120 4 6 20 10 bpm120.kmd
-
-180秒・120BPMの曲に対して4拍ごとにイベント行を出力。最初の6拍についてはスキップしイベントの出力は行わない。イベントはそれぞれの拍の20ticks(200msec)前を開始時間(st)とする。各イベントの消去時刻(et)は次のy0イベントの 10+1=11ticks(110msec)前とする。結果はbpm120.kmdに書き出す。
-
-<img src='images/kmdgen3.png' width='400'/>
+拙作ステップ入力式KMD歌詞エディタ[KMDED.X](https://github.com/tantanGH/kmded)を利用すると比較的簡単にKMDデータを作成することが可能です。
 
 ---
 
