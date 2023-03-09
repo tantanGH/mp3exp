@@ -87,8 +87,6 @@ XEiJ は Java VM上で実行できる X68k エミュレータで、macOSでも�
 
 なお、この制限は他の動画再生系・音声再生系ソフトでも同様です(mmvp.xなど)。
 
-<img src='images/mp3exp8.png' width='800'/>
-
 ---
 
 ### データ形式ごとの要求MPU能力
