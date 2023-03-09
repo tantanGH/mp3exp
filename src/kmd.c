@@ -24,6 +24,9 @@ int32_t kmd_init(KMD_HANDLE* kmd, FILE* fp, int16_t large) {
   kmd->current_event_ofs = 0;
   kmd->num_events = 0;
   kmd->events = NULL;
+  kmd->tag_title[0] = '\0';
+  kmd->tag_artist[0] = '\0';
+  kmd->tag_album[0] = '\0';
 
   // KMD file header check
   if (fp == NULL) goto exit;
@@ -53,20 +56,35 @@ int32_t kmd_init(KMD_HANDLE* kmd, FILE* fp, int16_t large) {
         uint8_t* m0 = jstrchr(line,'"');
         uint8_t* m1 = jstrrchr(line,'"');
         if (m0 != NULL && m1 != NULL && m0 < m1) {
-          e->pos_x = x;
-          e->pos_y = y;
-          e->active = 0;
-          e->start_msec = s0 * 60000 + s1 * 1000 + s2 * 10;
-          e->end_msec = e0 * 60000 + e1 * 1000 + e2 * 10;
           size_t m_len = m1 - m0 - 1;
           if (m_len > KMD_MAX_MESSAGE_LEN) m_len = KMD_MAX_MESSAGE_LEN;
-          memcpy(e->message, m0 + 1, m_len);
-          e->message[ m_len ] = '\0';
+          if (s0 == 99 && s1 == 59 && s2 == 99 && e0 == 99 && e1 == 59 && e2 == 99) {
+            if (memcmp(m0 + 1, "TIT2:", 5) == 0) {
+              memcpy(kmd->tag_title, m0 + 6, m_len - 5);
+              kmd->tag_title[ m_len ] = '\0';
+            } else if (memcmp(m0 + 1, "TPE1:", 5) == 0) {
+              memcpy(kmd->tag_artist, m0 + 6, m_len - 5);
+              kmd->tag_artist[ m_len ] = '\0';
+            } else if (memcmp(m0 + 1, "TALB:", 5) == 0) {
+              memcpy(kmd->tag_album, m0 + 6, m_len - 5);
+              kmd->tag_album[ m_len ] = '\0';
+            }
+          } else {
+            e->pos_x = x;
+            e->pos_y = y;
+            e->active = 0;
+            e->start_msec = s0 * 60000 + s1 * 1000 + s2 * 10;
+            e->end_msec = e0 * 60000 + e1 * 1000 + e2 * 10;
+            memcpy(e->message, m0 + 1, m_len);
+            e->message[ m_len ] = '\0';
+            i++;
+          }
         }
-        i++;
       }
     }
   }
+
+  kmd->num_events = i;
 
   rc = 0;
 
@@ -101,6 +119,7 @@ static void put_text24(uint16_t x, uint16_t y, uint16_t color, const uint8_t* te
   for (int16_t i = 0; i < len; i++) {
 
     uint16_t fx = x + 12*i;
+    if (fx >= 768) break;
 
     // SJIS code?
     uint16_t code = text[i];

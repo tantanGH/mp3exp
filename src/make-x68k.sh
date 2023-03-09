@@ -10,7 +10,7 @@ LIBMAD_DIR="${WORKING_DIR}/../libmad-0.15.1b"
 
 TARGET_FILE="MP3EXP.X"
 DOC_FILE="../MP3EXP.DOC"
-ZIP_FILE="../../MPEXP092.ZIP"
+ZIP_FILE="../../MPEXP093.ZIP"
 
 CC=${XDEV68K_DIR}/m68k-toolchain/bin/m68k-elf-gcc
 GAS2HAS="${XDEV68K_DIR}/util/x68k_gas2has.pl -cpu 68000 -inc doscall.inc -inc iocscall.inc"
