@@ -166,15 +166,13 @@ MP3 -> S44/A44 については コンバータ[MP3EX.X](https://github.com/tanta
 
 ソースツリーの `python/` フォルダの中にある `mp3shuffle.py` は [MicroPython for X680x0](https://github.com/yunkya2/micropython-x68k) 上で動作するシャッフル再生ツールです。カレントディレクトリにあるMP3ファイルをランダムに選択して再生します。コマンドライン引数で何ループするかを指定できます。
 
-<img src='images/mp3exp7.png' width='800'/>
-
 ---
 
 ### KMD歌詞ファイル再生
 
 Mercury-Unit デファクトスタンダードの録音再生ツール、Yas氏のSMR.XのKMD歌詞データファイルの簡易表示に対応しています。PCM/S44/A44だけでなくWAVやMP3でも利用できます。-xオプション利用時は24x24ドットフォントで、-xの指定が無い場合は16x16ドットフォントでの簡易表示になります。
 
-<img src='images/mp3exp9.png' width='800'/>
+<img src='images/mp3exp23.png' width='800'/>
 
 簡易実装につきタイミングが合わないなど表示上の差異がありますので、KMDデータを新規に作成する際には必ずSMR.Xで表示を確認するようにしてください。
 
