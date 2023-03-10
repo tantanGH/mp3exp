@@ -1029,11 +1029,7 @@ try:
       //if (B_BPEEK(REG_DMAC_CH2_CSR) & 0x80) {   // ch2 dmac operation complete?
         if (end_flag) { 
           if (use_kmd) {
-            if (!full_screen) {
-              B_PRINT("\r\x1b[1B\x1b[0K\x1b[1A\x1b[0K\x1b[1A\x1b[0K\x1b[1A\x1b[0K");
-            } else {
-              B_PRINT("\r\x1b[0K\x1b[1A\x1b[0K\x1b[1A\x1b[0K");             
-            }
+            kmd_clear_messages(&kmd);
           }
           B_PRINT("\rfinished.\x1b[0K");
           rc = 0;
@@ -1047,11 +1043,7 @@ try:
       if (pcm8a_get_data_length(0) == 0) {
         if (end_flag) { 
           if (use_kmd) {
-            if (!full_screen) {
-              B_PRINT("\r\x1b[1B\x1b[0K\x1b[1A\x1b[0K\x1b[1A\x1b[0K\x1b[1A\x1b[0K");
-            } else {
-              B_PRINT("\r\x1b[0K\x1b[1A\x1b[0K\x1b[1A\x1b[0K");             
-            }
+            kmd_clear_messages(&kmd);
           }
           B_PRINT("\rfinished.\x1b[0K");
           rc = 0;
@@ -1065,11 +1057,7 @@ try:
       if (ADPCMSNS() == 0) {
         if (end_flag) {
           if (use_kmd) {
-            if (!full_screen) {
-              B_PRINT("\r\x1b[1B\x1b[0K\x1b[1A\x1b[0K\x1b[1A\x1b[0K\x1b[1A\x1b[0K");
-            } else {
-              B_PRINT("\r\x1b[0K\x1b[1A\x1b[0K\x1b[1A\x1b[0K");             
-            }
+            kmd_clear_messages(&kmd);
           }
           B_PRINT("\rfinished.\x1b[0K");
           rc = 0;

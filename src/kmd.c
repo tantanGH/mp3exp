@@ -177,6 +177,20 @@ void kmd_erase_event_message(KMD_HANDLE* kmd, KMD_EVENT* event) {
 }
 
 //
+//  clear messages
+//
+void kmd_clear_messages(KMD_HANDLE* kmd) {
+  if (kmd->large) {
+    struct TXFILLPTR tfp = { 0, 16, 16 + kmd->cursor_pos_y * 16, 768 - 16, 24 * 2 + 16, 0x0000 };
+    TXFILL(&tfp);
+    struct TXFILLPTR tfp2 = { 1, 16, 16 + kmd->cursor_pos_y * 16, 768 - 16, 24 * 2 + 16, 0x0000 };
+    TXFILL(&tfp2);
+  } else {
+    B_PRINT("\r\x1b[1B\x1b[0K\x1b[1A\x1b[0K\x1b[1A\x1b[0K\x1b[1A\x1b[0K");
+  }
+}
+
+//
 //  print event message
 //
 void kmd_print_event_message(KMD_HANDLE* kmd, KMD_EVENT* event) {
