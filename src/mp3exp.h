@@ -1,7 +1,7 @@
 #ifndef __H_MP3EXP__
 #define __H_MP3EXP__
 
-#define VERSION "0.9.3 (2023/03/10)"
+#define VERSION "0.9.4 (2023/03/13)"
 
 #define REG_DMAC_CH2_CSR (0xE84080 + 0x00)
 #define REG_DMAC_CH3_BAR (0xE840C0 + 0x1C)

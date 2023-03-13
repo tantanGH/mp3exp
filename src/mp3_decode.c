@@ -238,7 +238,7 @@ int32_t mp3_decode_parse_tags(MP3_DECODE_HANDLE* decode, int16_t pic_brightness,
         } else {
 //          printf("NJ failure. (%d)\n",rc);
           if (rc == NJ_UNSUPPORTED) {
-            printf("unsupported jpeg artwork format. (pregressive JPEG?)\n");
+            printf("unsupported jpeg artwork format. (progressive JPEG?)\n");
           }
         }
       } else if (pic_data[0] == 0x89 && pic_data[1] == 0x50) {
