@@ -29,6 +29,7 @@ typedef struct {
   uint8_t tag_title[ KMD_MAX_MESSAGE_LEN + 1 ];
   uint8_t tag_artist[ KMD_MAX_MESSAGE_LEN + 1 ];
   uint8_t tag_album[ KMD_MAX_MESSAGE_LEN + 1 ];
+  uint8_t tag_artwork[ KMD_MAX_MESSAGE_LEN + 1 ];
 } KMD_HANDLE;
 
 int32_t kmd_init(KMD_HANDLE* kmd, FILE* fp, int16_t large);

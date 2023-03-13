@@ -27,6 +27,7 @@ int32_t kmd_init(KMD_HANDLE* kmd, FILE* fp, int16_t large) {
   kmd->tag_title[0] = '\0';
   kmd->tag_artist[0] = '\0';
   kmd->tag_album[0] = '\0';
+  kmd->tag_artwork[0] = '\0';
 
   // KMD file header check
   if (fp == NULL) goto exit;
@@ -68,6 +69,9 @@ int32_t kmd_init(KMD_HANDLE* kmd, FILE* fp, int16_t large) {
             } else if (memcmp(m0 + 1, "TALB:", 5) == 0) {
               memcpy(kmd->tag_album, m0 + 6, m_len - 5);
               kmd->tag_album[ m_len ] = '\0';
+            } else if (memcmp(m0 + 1, "APIC:", 5) == 0) {
+              memcpy(kmd->tag_artwork, m0 + 6, m_len - 5);
+              kmd->tag_artwork[ m_len ] = '\0';
             }
           } else {
             e->pos_x = x;

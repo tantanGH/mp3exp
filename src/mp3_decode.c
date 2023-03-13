@@ -4,7 +4,7 @@
 #include "himem.h"
 #include "utf16_cp932.h"
 #include "nanojpeg.h"
-#include "png.h"
+//#include "png.h"
 #include "mp3_decode.h"
 
 //
@@ -241,12 +241,12 @@ int32_t mp3_decode_parse_tags(MP3_DECODE_HANDLE* decode, int16_t pic_brightness,
             printf("unsupported jpeg artwork format. (progressive JPEG?)\n");
           }
         }
-      } else if (pic_data[0] == 0x89 && pic_data[1] == 0x50) {
-        // png
-        PNG_DECODE_HANDLE png = { 0 };
-        png_init(&png, pic_brightness, pic_half_size);
-        png_load(&png, pic_data, pic_data_len);
-        png_close(&png);
+//      } else if (pic_data[0] == 0x89 && pic_data[1] == 0x50) {
+//        // png
+//        PNG_DECODE_HANDLE png = { 0 };
+//        png_init(&png, pic_brightness, pic_half_size);
+//        png_load(&png, pic_data, pic_data_len);
+//        png_close(&png);
       }
 
     } else {
