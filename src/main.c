@@ -23,6 +23,9 @@
 #include "mp3_decode.h"
 #include "ym2608_decode.h"
 
+// artwork
+#include "nanojpeg.h"
+
 // application
 #include "kmd.h"
 #include "mp3exp.h"
@@ -462,6 +465,44 @@ try:
     }
   }
 
+  // KMD artwork
+  int16_t kmd_artwork = 0;
+  if (mp3_pic_brightness > 0 && use_kmd && kmd.tag_artwork[0] != '\0') {
+    printf("\rloading KMD album artwork...");
+    FILE* fp_art = fopen(kmd.tag_artwork, "rb");
+    if (fp_art != NULL) {
+      fseek(fp_art, 0, SEEK_END);
+      size_t pic_data_len = ftell(fp_art);
+      fseek(fp_art, 0, SEEK_SET);
+      uint8_t* pic_data = (uint8_t*)himem_malloc(pic_data_len, 0);
+      if (pic_data != NULL) {
+        size_t read_len = 0;
+        do {
+          size_t len = fread(pic_data + read_len, sizeof(uint8_t), pic_data_len - read_len, fp_art);
+          if (len == 0) break;
+          read_len += len;
+        } while (read_len < pic_data_len);
+        if (read_len >= pic_data_len) {
+          njInit(mp3_pic_brightness);
+          int32_t rc = njDecode(pic_data, pic_data_len, !full_screen);
+          if (rc == NJ_OK) {
+            njDone();
+            SCROLL(0, 512-128, 0);
+            SCROLL(1, 512-128, 0);
+            SCROLL(2, 512-128, 0);
+            SCROLL(3, 512-128, 0);
+            struct TXFILLPTR txfil = { 2, 128, 0, 512, 512, 0x0000 };
+            TXFILL(&txfil);
+            kmd_artwork = 1;
+          }
+        }
+        himem_free(pic_data, 0);
+      }
+      fclose(fp_art);
+    }
+    printf("\r\x1b[0K");
+  }
+
   // open input file
   fp = fopen(pcm_file_name, "rb");
   if (fp == NULL) {
@@ -472,8 +513,8 @@ try:
   // read the first 10 bytes of the MP3 file
   size_t skip_offset = 0;
   if (use_mp3_cache || input_format == FORMAT_MP3) {
-    printf("\rparsing MP3 ID3v2 tag and album art...");
-    int32_t ofs = mp3_decode_parse_tags(&mp3_decoder, mp3_pic_brightness, !full_screen, fp);
+    printf("\rparsing MP3 ID3v2 tag and album artwork...");
+    int32_t ofs = mp3_decode_parse_tags(&mp3_decoder, kmd_artwork == 0 ? mp3_pic_brightness : 0, !full_screen, fp);
     if (ofs < 0) {
       printf("\rerror: MP3 ID3v2 tag parse error.\x1b[0K\n");
       goto catch;

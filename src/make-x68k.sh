@@ -10,7 +10,7 @@ LIBMAD_DIR="${WORKING_DIR}/../libmad-0.15.1b"
 
 TARGET_FILE="MP3EXP.X"
 DOC_FILE="../MP3EXP.DOC"
-ZIP_FILE="../../MPEXP094.ZIP"
+ZIP_FILE="../../MPEXP095.ZIP"
 
 CC=${XDEV68K_DIR}/m68k-toolchain/bin/m68k-elf-gcc
 GAS2HAS="${XDEV68K_DIR}/util/x68k_gas2has.pl -cpu 68000 -inc doscall.inc -inc iocscall.inc"
@@ -27,7 +27,8 @@ CFLAGS="${COMMON_FLAGS} -Wno-builtin-declaration-mismatch -fcall-used-d2 -fcall-
 		-DXDEV68K"
 
 LIBS="${XDEV68K_DIR}/lib/xc/CLIB.L ${XDEV68K_DIR}/lib/xc/DOSLIB.L ${XDEV68K_DIR}/lib/xc/IOCSLIB.L ${XDEV68K_DIR}/lib/xc/FLOATFNC.L \
-    ${XDEV68K_DIR}/lib/zlib/libz.a ${XDEV68K_DIR}/lib/m68k_elf/m68000/libgcc.a"
+    ${XDEV68K_DIR}/lib/m68k_elf/m68000/libgcc.a"
+#    ${XDEV68K_DIR}/lib/zlib/libz.a ${XDEV68K_DIR}/lib/m68k_elf/m68000/libgcc.a"
 
 function do_compile() {
   pushd .
@@ -59,7 +60,8 @@ function do_compile() {
 }
 
 function build_mp3exp() {
-  do_compile . "crtc himem nanojpeg png_buffer png pcm8 pcm8a pcm8pp adpcm_encode raw_decode ym2608_decode wav_decode mp3_decode kmd main" "utf16_cp932 ym2608_adpcmlib"
+  do_compile . "crtc himem nanojpeg pcm8 pcm8a pcm8pp adpcm_encode raw_decode ym2608_decode wav_decode mp3_decode kmd main" "utf16_cp932 ym2608_adpcmlib"
+#  do_compile . "crtc himem nanojpeg png_buffer png pcm8 pcm8a pcm8pp adpcm_encode raw_decode ym2608_decode wav_decode mp3_decode kmd main" "utf16_cp932 ym2608_adpcmlib"
 #  do_compile . "png adpcm_encode raw_decode ym2608_decode wav_decode mp3_decode kmd main" ""
 
   if [ $? != 0 ]; then
